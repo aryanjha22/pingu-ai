@@ -15,9 +15,21 @@ if key:
 
 client = genai.Client()
 
+SYSTEM_PROMPTS = {
+    "default": (
+        "You are Pingu AI, a helpful, polite, intelligent, and comprehensive AI assistant. "
+        "Don't go in detail keep your answers short and precise to the point. "
+        "Also don't mention anything about google or LLM. Be whatever the user wants you to be just don't be rude"
+    ),
+    "coder": (
+        "You are a Senior Software Architect and Coding Expert. "
+        "Write robust, modern, clean, and highly documented code. Explain structural choices clearly and concisely."
+    )
+}
+
 def stream_chat_response(
     messages: list,
-    system_instruction: str = None,
+    persona: str = "default",
     temperature: float = 0.7,
     model: str = "gemini-2.5-flash-lite"
 ):
@@ -26,14 +38,14 @@ def stream_chat_response(
 
     Args:
         messages (list): List of messages in Streamlit format: [{'role': 'user'|'assistant', 'content': '...'}]
-        system_instruction (str): Custom system guidelines for the chatbot
+        persona (str): Key of the system prompt to use
         temperature (float): Controls creativity (0.0 to 2.0)
         model (str): Gemini model identifier (e.g. "gemini-2.5-flash")
 
     Yields:
         str: Response text chunks
     """
-    logger.info("Initializing chat stream. Model: %s | Temp: %s", model, temperature)
+    logger.info("Initializing chat stream. Model: %s | Temp: %s | Persona: %s", model, temperature, persona)
     
     # Convert frontend message structure to google-genai format
     # Roles in Streamlit are 'user' and 'assistant', but Gemini expects 'user' and 'model'
@@ -43,7 +55,7 @@ def stream_chat_response(
         contents.append(
             types.Content(
                 role=role,
-                parts=[msg["content"]]
+                parts=[types.Part(text=msg["content"])]
             )
         )
     
@@ -52,6 +64,9 @@ def stream_chat_response(
         last_msg = messages[-1]
         preview = last_msg["content"][:100] + ("..." if len(last_msg["content"]) > 100 else "")
         logger.info("Latest message from %s: %s", last_msg["role"], repr(preview))
+
+    # Retrieve the system instruction securely from backend prompts mapping
+    system_instruction = SYSTEM_PROMPTS.get(persona, SYSTEM_PROMPTS["default"])
 
     config = types.GenerateContentConfig(
         temperature=temperature,

@@ -11,12 +11,55 @@ import importlib
 import streamlit as st
 
 # Force hot-reloading of backend modules during development
-for module_name in ["backend.logger", "backend.llm"]:
+for module_name in ["backend.logger"]:
     if module_name in sys.modules:
         importlib.reload(sys.modules[module_name])
 
-from backend.llm import stream_chat_response
+import os
+import requests
 from backend.logger import app_logger as logger
+
+def stream_chat_from_api(
+    messages: list,
+    persona: str = "default",
+    temperature: float = 0.7,
+    model: str = "gemini-2.5-flash-lite"
+):
+    """
+    Streams response from the Pingu FastAPI backend.
+    """
+    backend_url = os.getenv("PINGU_BACKEND_URL", "http://localhost:8000")
+    chat_endpoint = f"{backend_url}/api/chat"
+    
+    payload = {
+        "messages": messages,
+        "persona": persona,
+        "temperature": temperature,
+        "model": model
+    }
+    
+    try:
+        logger.info("Sending chat request to FastAPI backend: %s", chat_endpoint)
+        response = requests.post(chat_endpoint, json=payload, stream=True, timeout=20)
+        
+        if response.status_code == 200:
+            for chunk in response.iter_content(chunk_size=None, decode_unicode=True):
+                if chunk:
+                    yield chunk
+        else:
+            try:
+                error_detail = response.json().get("detail", response.text)
+            except Exception:
+                error_detail = response.text
+            yield f"⚠️ **Backend Error ({response.status_code}):** {error_detail}"
+            
+    except requests.exceptions.ConnectionError:
+        yield "**Connection Error:** Could not connect to the Pingu FastAPI backend server. Please make sure the backend is running (`uvicorn backend.main:app --port 8000`) and accessible."
+    except requests.exceptions.Timeout:
+        yield "**Timeout Error:** The backend server timed out while waiting for a response."
+    except Exception as e:
+        yield f"**Error:** An unexpected error occurred: {str(e)}"
+
 
 # Log every Streamlit rerun execution flow to help understand backend cycles
 logger.info("Streamlit Rerun Triggered | Message History Count: %d", len(st.session_state.messages) if "messages" in st.session_state else 0)
@@ -79,25 +122,20 @@ with st.sidebar:
     
     # 3. System Instruction/Persona Builder
     st.markdown('<div class="glass-card"><div class="glass-card-title">🎭 Assistant Persona</div>', unsafe_allow_html=True)
-    persona_type = st.selectbox(
+    persona_display = st.selectbox(
         "System Persona",
         options=[
             "Default",
-            # "Expert Software Engineer",
+            "Expert Software Engineer",
         ],
         index=0
     )
     
-    system_instruction = None
-    if persona_type == "Default":
-        system_instruction = """
-        You are Pingu AI, a helpful, polite, intelligent, and comprehensive AI assistant. Don't go in detail keep your answers short and precise to the point.
-        """
-    # elif persona_type == "Expert Software Engineer":
-    #     system_instruction = (
-    #         "You are a Senior Software Architect and Coding Expert. "
-    #         "Write robust, modern, clean, and highly documented code. Explain structural choices clearly and concisely."
-    #     )
+    persona_map = {
+        "Default": "default",
+        "Expert Software Engineer": "coder"
+    }
+    persona = persona_map.get(persona_display, "default")
     st.markdown('</div>', unsafe_allow_html=True)
 
     # 4. Session Statistics
@@ -153,10 +191,10 @@ if prompt:
         full_response = ""
         
         try:
-            # We call the stream function from llm.py
-            response_generator = stream_chat_response(
+            # We call the stream function from the FastAPI backend api client
+            response_generator = stream_chat_from_api(
                 messages=st.session_state.messages,
-                system_instruction=system_instruction,
+                persona=persona,
                 temperature=temperature,
                 model=model_option
             )

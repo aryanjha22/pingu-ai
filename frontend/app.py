@@ -33,7 +33,7 @@ st.set_page_config(
     page_title="Pingu - A cool AI Assistant",
     page_icon="🐧",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Load and inject custom CSS from external file
@@ -70,9 +70,12 @@ if "input_value" not in st.session_state:
     st.session_state.input_value = None
 
 
-# ----------------- LEFT PANEL: CHATS (SIDEBAR) -----------------
-with st.sidebar:
-    st.markdown('<div class="sidebar-header">🐧 Chats</div>', unsafe_allow_html=True)
+# ----------------- MAIN UI (THREE COLUMNS) -----------------
+left_chats_col, main_chat_col, right_controls_col = st.columns([0.22, 0.56, 0.22], gap="medium")
+
+# Left Panel: Chats
+with left_chats_col:
+    st.markdown('<div class="glass-card-title">🐧 Chats</div>', unsafe_allow_html=True)
     
     # New Chat Button
     st.markdown('<div class="new-chat-container">', unsafe_allow_html=True)
@@ -100,15 +103,12 @@ with st.sidebar:
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ----------------- MAIN UI (TWO COLUMNS) -----------------
-main_chat_col, right_controls_col = st.columns([0.75, 0.25], gap="large")
-
 # Right Panel: Controls
 with right_controls_col:
-    st.markdown('<div class="glass-card"><div class="glass-card-title">⚙️ Settings</div>', unsafe_allow_html=True)
+    st.markdown('<div class="glass-card-title">⚙️ Settings</div>', unsafe_allow_html=True)
     model_option = st.selectbox(
         "Model",
-        options=["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"],
+        options=["gemini-2.5-flash-lite", "gemma-4-26b-a4b-it", "gemma-4-31b-it","gemini-3.1-flash-lite", "gemini-2.5-flash"],
         index=0
     )
     
@@ -161,7 +161,6 @@ with right_controls_col:
             st.session_state.active_chat_id = "chat_default"
         st.session_state.stats_prompts = 0
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # Left Panel: Chats
 with main_chat_col:

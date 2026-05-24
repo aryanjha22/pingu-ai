@@ -7,7 +7,7 @@ root_dir = Path(__file__).resolve().parent.parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -69,3 +69,47 @@ async def chat_endpoint(request: ChatRequest):
     )
     
     return StreamingResponse(generator, media_type="text/plain")
+
+
+@app.websocket("/api/ws/chat")
+async def websocket_chat_endpoint(websocket: WebSocket):
+    """
+    Persistent WebSocket endpoint for bidirectional, real-time streamed chat.
+    """
+    await websocket.accept()
+    logger.info("WebSocket connection accepted.")
+    try:
+        while True:
+            # Await incoming message from the client
+            data = await websocket.receive_json()
+            logger.info("Received WebSocket message payload: %s", data)
+            
+            messages = data.get("messages", [])
+            persona = data.get("persona", "default")
+            temperature = data.get("temperature", 0.7)
+            model = data.get("model", "gemini-2.5-flash-lite")
+            
+            messages_dict = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
+            
+            try:
+                # Iterate through LLM generator and push chunks back to the client
+                generator = stream_chat_response(
+                    messages=messages_dict,
+                    persona=persona,
+                    temperature=temperature,
+                    model=model
+                )
+                
+                for chunk in generator:
+                    await websocket.send_json({"type": "chunk", "text": chunk})
+                
+                await websocket.send_json({"type": "done"})
+            except Exception as e:
+                logger.error("Error generating stream response over WS: %s", str(e), exc_info=True)
+                await websocket.send_json({"type": "error", "text": str(e)})
+                
+    except WebSocketDisconnect:
+        logger.info("WebSocket connection disconnected by client.")
+    except Exception as e:
+        logger.error("WebSocket server connection error: %s", str(e), exc_info=True)
+

@@ -4,8 +4,7 @@
    1. GLOBAL SYSTEM
    ========================================================================== */
 .stApp {
-    background: #212121;
-    /* Classic ChatGPT dark grey */
+    background: #121214;
     color: #ececec;
     font-family: 'Plus Jakarta Sans', sans-serif;
 }
@@ -21,12 +20,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
+    background: rgba(99, 102, 241, 0.3) !important;
+    border-radius: 10px !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
+    background: rgba(99, 102, 241, 0.55) !important;
 }
 
 /* ==========================================================================
@@ -44,12 +43,25 @@ h6 {
 }
 
 .gradient-title {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 700;
     text-align: left;
     margin-top: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, #818cf8 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     color: #ffffff;
+}
+
+/* Welcome Page Empty State */
+.empty-chat-welcome {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    min-height: 40vh;
 }
 
 /* ==========================================================================
@@ -68,62 +80,151 @@ h6 {
     align-self: flex-start !important;
 
     /* Glassmorphic Section Styling */
-    background: rgba(255, 255, 255, 0.03) !important;
-    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border-radius: 18px !important;
     padding: 1.5rem !important;
     border: 1px solid rgba(255, 255, 255, 0.05) !important;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
 }
 
 .glass-card-title {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #ffffff;
+    color: #a5b4fc;
     margin-bottom: 1.25rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding-bottom: 0.5rem;
+    letter-spacing: 1.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.6rem;
 }
 
 /* ==========================================================================
    4. CHATS COLUMN (LEFT PANEL)
    ========================================================================== */
 
+/* User Profile Widget */
+.user-profile-card {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+.user-profile-img {
+    border-radius: 50%;
+    margin-right: 0.75rem;
+    border: 2px solid #6366f1;
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+}
+
+.user-profile-info {
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.user-profile-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-profile-email {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dev-badge {
+    display: inline-block;
+    background: rgba(99, 102, 241, 0.12);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+/* Sign Out Container */
+.signout-btn-container {
+    margin-bottom: 1.5rem;
+}
+
+.signout-btn-container div[data-testid="stButton"] button {
+    background: rgba(239, 68, 68, 0.08) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(239, 68, 68, 0.15) !important;
+    border-radius: 8px !important;
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.85rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.signout-btn-container div[data-testid="stButton"] button:hover {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1) !important;
+}
+
 /* New Chat Button */
 .new-chat-container div[data-testid="stButton"] button {
-    background: rgba(255, 255, 255, 0.05) !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    border-radius: 8px !important;
+    background: rgba(99, 102, 241, 0.1) !important;
+    color: #e0e7ff !important;
+    border: 1px solid rgba(99, 102, 241, 0.25) !important;
+    border-radius: 10px !important;
     font-weight: 600 !important;
-    padding: 0.6rem 1rem !important;
+    padding: 0.65rem 1rem !important;
     width: 100% !important;
     transition: all 0.2s ease !important;
     font-size: 0.9rem !important;
 }
 
-.new-chat-container div[data-testid="stButton"] button:hover {
-    background: rgba(255, 255, 255, 0.12) !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+.new-chat-container div[data-testid="stButton"] button:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.2) !important;
+    border-color: rgba(99, 102, 241, 0.45) !important;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25) !important;
+    transform: translateY(-1px);
+}
+
+.new-chat-container div[data-testid="stButton"] button:disabled {
+    background: rgba(255, 255, 255, 0.02) !important;
+    color: #64748b !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 /* Active/Inactive Chat Rows */
+.chats-list-scrollable {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
 .sidebar-chat-active div[data-testid="stButton"] button,
 .sidebar-chat-inactive div[data-testid="stButton"] button {
     background: transparent !important;
-    color: #b4b4b4 !important;
+    color: #94a3b8 !important;
     border: none !important;
-    border-radius: 8px !important;
+    border-radius: 10px !important;
     font-weight: 500 !important;
     text-align: left !important;
     justify-content: flex-start !important;
-    padding: 0.6rem 0.8rem !important;
+    padding: 0.65rem 0.85rem !important;
     width: 100% !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     font-size: 0.9rem !important;
     display: inline-block !important;
     white-space: nowrap !important;
@@ -132,13 +233,14 @@ h6 {
 }
 
 .sidebar-chat-active div[data-testid="stButton"] button {
-    background: rgba(255, 255, 255, 0.08) !important;
-    border-left: 3px solid #6366f1 !important; /* Premium violet line */
+    background: rgba(99, 102, 241, 0.15) !important;
+    border-left: 3px solid #818cf8 !important;
     border-top-left-radius: 0px !important;
     border-bottom-left-radius: 0px !important;
-    padding-left: 0.6rem !important;
+    padding-left: 0.65rem !important;
     color: #ffffff !important;
     font-weight: 600 !important;
+    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.05);
 }
 
 .sidebar-chat-inactive div[data-testid="stButton"] button:hover {
@@ -146,22 +248,43 @@ h6 {
     color: #ffffff !important;
 }
 
-
-
 /* ==========================================================================
    5. MINIMIZED GAPS & CHATGPT STYLE MESSAGES
    ========================================================================== */
-/* Container adjustments */
 .block-container {
     padding-top: 2rem !important;
-    padding-bottom: 10rem !important;
+    padding-bottom: 0rem !important;
+}
+
+.chat-messages-container {
+    margin-top: 1rem;
+}
+
+/* ── Fix: Scrollable chat messages + fixed input bar ── */
+
+/* Override Streamlit's scrollable container height to fill viewport */
+[data-testid="stHorizontalBlock"]>div:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stChatMessage"]),
+[data-testid="stHorizontalBlock"]>div:nth-child(2) [data-testid="stVerticalBlockBorderWrapper"]:has(.empty-chat-welcome) {
+    height: calc(100vh - 14rem) !important;
+    max-height: calc(100vh - 14rem) !important;
+    overflow-y: auto !important;
+}
+
+/* Pin the chat input at the bottom of the page, centered within the middle column */
+[data-testid="stBottom"] {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100 !important;
+    background: #121214 !important;
+    padding: 0.5rem 1rem 0.75rem 1rem !important;
 }
 
 [data-testid="stChatMessage"] {
     background-color: transparent !important;
     border: none !important;
-    padding: 0.25rem 0 !important;
-    /* Minimized vertical gap */
+    padding: 0.4rem 0 !important;
     margin-bottom: 0 !important;
     box-shadow: none !important;
     max-width: 800px;
@@ -184,15 +307,14 @@ h6 {
 }
 
 [data-testid="stChatMessage"][data-test-role="user"] .stMarkdown {
-    background: #2f2f2f !important;
-    /* ChatGPT user bubble color */
+    background: #2b2b2f !important;
     color: #ececec !important;
-    padding: 0.5rem 1rem !important;
-    border-radius: 16px !important;
+    padding: 0.65rem 1.1rem !important;
+    border-radius: 18px !important;
     display: inline-block !important;
     max-width: 100% !important;
-    box-shadow: none !important;
-    font-weight: 400;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 /* Hide avatars for user to mimic ChatGPT right-aligned look */
@@ -203,8 +325,9 @@ h6 {
 /* Assistant avatar adjustment */
 [data-testid="stChatMessage"][data-test-role="assistant"] [data-testid="stChatAvatar"] {
     margin-top: 0.25rem !important;
-    width: 30px !important;
-    height: 30px !important;
+    width: 32px !important;
+    height: 32px !important;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
 }
 
 /* Right align user messages */
@@ -217,16 +340,18 @@ h6 {
    6. CHATGPT STYLE INPUT BAR
    ========================================================================== */
 [data-testid="stChatInput"] {
-    border-radius: 24px !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    background-color: #2f2f2f !important;
+    border-radius: 26px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background-color: #242427 !important;
     max-width: 800px !important;
-    margin: 0 auto 2rem auto !important;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1) !important;
+    margin: 0 auto 0.75rem auto !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.3s ease !important;
 }
 
 [data-testid="stChatInput"]:focus-within {
-    border-color: rgba(255, 255, 255, 0.4) !important;
+    border-color: rgba(99, 102, 241, 0.45) !important;
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.15) !important;
 }
 
 /* Hide default branding */
@@ -244,7 +369,392 @@ header {
 
 /* Custom Text inputs */
 .stSelectbox>div>div {
-    background: #2f2f2f !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: #242427 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
     color: white !important;
+    border-radius: 8px !important;
+}
+
+/* Settings elements */
+.stats-container {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.settings-actions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Clear Messages button */
+.settings-actions-container div[data-testid="stButton"]:nth-child(1) button {
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: #e2e8f0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 8px !important;
+}
+
+.settings-actions-container div[data-testid="stButton"]:nth-child(1) button:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Delete Chat Button */
+.settings-actions-container div[data-testid="stButton"]:nth-child(2) button {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #fca5a5 !important;
+    border: 1px solid rgba(239, 68, 68, 0.2) !important;
+    border-radius: 8px !important;
+}
+
+.settings-actions-container div[data-testid="stButton"]:nth-child(2) button:hover {
+    background: rgba(239, 68, 68, 0.18) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+/* ==========================================================================
+   7. HIGH-FIDELITY PREMIUM LOGIN SCREEN & WIDGETS
+   ========================================================================== */
+/* ==========================================================================
+   7. HIGH-FIDELITY PREMIUM LOGIN SCREEN & WIDGETS
+   ========================================================================== */
+
+/* Glow orbs on stApp when login page is active */
+.stApp:has(.login-marker) {
+    background:
+        radial-gradient(circle at 15% 25%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 75%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),
+        #121214 !important;
+}
+
+/* Styled border wrapper as our glassmorphic login card shell */
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.login-marker) {
+    max-width: 480px !important;
+    margin: 8% auto !important;
+    /* Lowers the card on the viewport screen */
+    padding: 3.5rem 3rem !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border-radius: 28px !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.6),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(25px) !important;
+    -webkit-backdrop-filter: blur(25px) !important;
+    text-align: center !important;
+    transition: transform 0.3s ease, border-color 0.3s ease !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.login-marker):hover {
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    transform: translateY(-2px) !important;
+}
+
+/* Clear default inner spacing of vertical blocks in card */
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.login-marker)>div {
+    border: none !important;
+    background: transparent !important;
+}
+
+.login-logo-container {
+    width: 110px;
+    height: 110px;
+    margin: 0 auto 2rem auto;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.3),
+        inset 0 2px 5px rgba(255, 255, 255, 0.05);
+    position: relative;
+}
+
+.login-logo-container::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(6, 182, 212, 0.4));
+    border-radius: 50%;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.login-marker):hover .login-logo-container::before {
+    opacity: 1;
+}
+
+.login-logo {
+    font-size: 5rem;
+    line-height: 1.1;
+    display: inline-block;
+    animation: pingu-float 4s ease-in-out infinite;
+}
+
+@keyframes pingu-float {
+
+    0%,
+    100% {
+        transform: translateY(0) rotate(0deg);
+    }
+
+    50% {
+        transform: translateY(-8px) rotate(4deg);
+    }
+}
+
+.login-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 0.75rem;
+    text-align: center !important;
+    background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #ffffff;
+}
+
+.login-subtitle {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    margin-bottom: 2.5rem;
+    line-height: 1.6;
+    text-align: center !important;
+}
+
+/* Premium Custom Dev Banner */
+.dev-mode-banner {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.07) 0%, rgba(245, 158, 11, 0.02) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 16px;
+    padding: 1.1rem;
+    margin-bottom: 2.2rem;
+    text-align: left;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.dev-mode-banner::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: #f59e0b;
+}
+
+.dev-mode-banner-header {
+    display: flex;
+    align-items: center;
+    color: #fbbf24;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.dev-mode-banner-content {
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    line-height: 1.45;
+}
+
+/* ── Login Button Stack Layout ── */
+.login-btn-stack {
+    max-width: 320px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* ── Shared Button Geometry (Google <a> link & Streamlit native buttons) ── */
+.google-login-btn,
+.guest-login-btn {
+    height: 46px !important;
+    min-height: 46px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.88rem !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+    max-width: 320px !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    padding: 0 1.25rem !important;
+    border: none !important;
+    outline: none !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    -webkit-font-smoothing: antialiased !important;
+}
+
+/* ── Google Button (white) ── */
+.google-login-btn {
+    background: #ffffff !important;
+    color: #1a1a2e !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+    line-height: 46px !important;
+}
+
+.google-login-btn:hover {
+    background: #f4f6ff !important;
+    box-shadow: 0 6px 22px rgba(255, 255, 255, 0.2),
+        0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+    transform: translateY(-1.5px) !important;
+}
+
+.google-login-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* ── Guest Button (indigo gradient) ── */
+.guest-login-btn {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35) !important;
+    line-height: 46px !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.guest-login-btn::before {
+    content: '' !important;
+    position: absolute !important;
+    inset: 0 !important;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, transparent 60%) !important;
+    pointer-events: none !important;
+}
+
+.guest-login-btn:hover {
+    background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%) !important;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5),
+        0 0 0 2px rgba(124, 58, 237, 0.3) !important;
+    transform: translateY(-1.5px) !important;
+}
+
+.guest-login-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+/* ── "or" Divider ── */
+.login-divider {
+    display: flex;
+    align-items: center;
+    max-width: 320px;
+    margin: 1.1rem auto;
+    gap: 0.75rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.login-divider span {
+    color: #4b5563;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.login-card-footer {
+    position: fixed !important;
+    right: 2rem !important;
+    bottom: 2rem !important;
+    margin-top: 0 !important;
+    font-size: 0.85rem !important;
+    color: #64748b !important;
+    letter-spacing: 0.5px !important;
+    background: transparent !important;
+    z-index: 1000 !important;
+}
+
+@media (max-width: 768px) {
+    .login-card-footer {
+        position: static !important;
+        margin-top: 2.5rem !important;
+        text-align: center !important;
+        font-size: 0.8rem !important;
+        display: block !important;
+    }
+}
+
+/* ==========================================================================
+   8. QUIRKY & PREMIUM PINGU THINKING LOADER
+   ========================================================================== */
+.pingu-thinking-container {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.85rem !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    padding: 0.75rem 1.25rem !important;
+    border-radius: 18px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    animation: pingu-pulse 2s ease-in-out infinite !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    margin: 0.5rem 0 !important;
+}
+
+.pingu-thinking-emoji {
+    font-size: 1.4rem !important;
+    animation: pingu-waddle 1.2s ease-in-out infinite !important;
+    display: inline-block !important;
+}
+
+.pingu-thinking-text {
+    font-size: 0.92rem !important;
+    color: #a5b4fc !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.2px !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+@keyframes pingu-pulse {
+    0%, 100% {
+        opacity: 0.8;
+        transform: scale(0.98);
+        border-color: rgba(255, 255, 255, 0.06) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.01);
+        border-color: rgba(129, 140, 248, 0.35) !important;
+        box-shadow: 0 4px 25px rgba(99, 102, 241, 0.2) !important;
+    }
+}
+
+@keyframes pingu-waddle {
+    0%, 100% {
+        transform: rotate(-12deg) translateY(0);
+    }
+    50% {
+        transform: rotate(12deg) translateY(-3px);
+    }
 }

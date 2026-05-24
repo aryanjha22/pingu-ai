@@ -1,31 +1,12 @@
 import os
 import time
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from backend import config
 from backend.logger import backend_logger as logger
 
-
-load_dotenv()
-
-# Map Gemini_API_Key to GEMINI_API_KEY for the SDK
-key = os.getenv("Gemini_API_Key") or os.getenv("GEMINI_API_KEY")
-if key:
-    os.environ["GEMINI_API_KEY"] = key
-
+# Initialize Gemini Client
 client = genai.Client()
-
-SYSTEM_PROMPTS = {
-    "default": (
-        "You are Pingu AI, a helpful, polite, intelligent, and comprehensive AI assistant. "
-        "Don't go in detail keep your answers short and precise to the point. "
-        "Also don't mention anything about google or LLM. Be whatever the user wants you to be just don't be rude"
-    ),
-    "coder": (
-        "You are a Senior Software Architect and Coding Expert. "
-        "Write robust, modern, clean, and highly documented code. Explain structural choices clearly and concisely."
-    )
-}
 
 def stream_chat_response(
     messages: list,
@@ -34,13 +15,13 @@ def stream_chat_response(
     model: str = "gemini-2.5-flash-lite"
 ):
     """
-    Streams responses from the Gemini API.
+    Streams responses from the Gemini API using system instructions and configuration.
 
     Args:
         messages (list): List of messages in Streamlit format: [{'role': 'user'|'assistant', 'content': '...'}]
         persona (str): Key of the system prompt to use
         temperature (float): Controls creativity (0.0 to 2.0)
-        model (str): Gemini model identifier (e.g. "gemini-2.5-flash")
+        model (str): Gemini model identifier
 
     Yields:
         str: Response text chunks
@@ -65,10 +46,10 @@ def stream_chat_response(
         preview = last_msg["content"][:100] + ("..." if len(last_msg["content"]) > 100 else "")
         logger.info("Latest message from %s: %s", last_msg["role"], repr(preview))
 
-    # Retrieve the system instruction securely from backend prompts mapping
-    system_instruction = SYSTEM_PROMPTS.get(persona, SYSTEM_PROMPTS["default"])
+    # Retrieve the system instruction securely from configuration prompts mapping
+    system_instruction = config.SYSTEM_PROMPTS.get(persona, config.SYSTEM_PROMPTS["default"])
 
-    config = types.GenerateContentConfig(
+    config_params = types.GenerateContentConfig(
         temperature=temperature,
         system_instruction=system_instruction
     )
@@ -82,7 +63,7 @@ def stream_chat_response(
         response = client.models.generate_content_stream(
             model=model,
             contents=contents,
-            config=config
+            config=config_params
         )
         for chunk in response:
             if chunk.text:
@@ -103,4 +84,3 @@ def stream_chat_response(
     except Exception as e:
         logger.error("Gemini API Error: %s", str(e), exc_info=True)
         yield f"Gemini API Error: {str(e)}"
-

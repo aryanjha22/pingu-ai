@@ -60,6 +60,9 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+pingu_local.db
+*.db
+*.db-journal
 
 # Flask stuff:
 instance/
@@ -217,3 +220,5 @@ __marimo__/
 # Streamlit
 # .streamlit/secrets.toml
 .streamlit/
+
+/backend/pingu-52f3f-firebase-adminsdk-g8i1m-6f16c1d817.json

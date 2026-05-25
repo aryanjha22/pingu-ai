@@ -163,16 +163,23 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: Optional[str] = Q
                 )
 
                 full_response = ""
-                for chunk in generator:
-                    full_response += chunk
-                    await websocket.send_json({"type": "chunk", "text": chunk})
-
-                # Append assistant response to message history and persist to database
-                if chat_id:
-                    messages_dict.append({"role": "assistant", "content": full_response})
-                    chat_store.update_chat_messages(chat_id, messages_dict)
+                try:
+                    for chunk in generator:
+                        full_response += chunk
+                        await websocket.send_json({"type": "chunk", "text": chunk})
+                except WebSocketDisconnect:
+                    logger.info("WebSocket disconnected during stream. Saving partial response to database.")
+                    raise
+                finally:
+                    # Append assistant response (even if partial/interrupted) and persist to database
+                    if chat_id and full_response:
+                        messages_dict.append({"role": "assistant", "content": full_response})
+                        chat_store.update_chat_messages(chat_id, messages_dict)
 
                 await websocket.send_json({"type": "done"})
+            except WebSocketDisconnect:
+                # Propagate this up so that the outer WebSocketDisconnect handler catches it cleanly
+                raise
             except Exception as e:
                 logger.error("Error generating stream response over WS: %s", str(e), exc_info=True)
                 await websocket.send_json({"type": "error", "text": str(e)})

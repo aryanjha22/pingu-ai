@@ -42,9 +42,8 @@ def render_sidebar():
     
     # 2. New Chat Button
     st.markdown('<div class="new-chat-container">', unsafe_allow_html=True)
-    has_empty_chat = any(len(chat["messages"]) == 0 for chat in st.session_state.chats.values())
-    
     active_chat = st.session_state.chats.get(st.session_state.active_chat_id, {})
+    has_empty_chat = len(active_chat.get("messages", [])) == 0
     
     if st.button("➕ New Chat", use_container_width=True, disabled=has_empty_chat, key="new_chat_btn"):
         new_id = f"chat_{int(time.time() * 1000)}"
@@ -57,12 +56,15 @@ def render_sidebar():
             token=user_token
         )
         if success:
+            now = time.time()
             st.session_state.chats[new_id] = {
                 "name": "New Chat",
                 "messages": [],
                 "persona": active_chat.get("persona", "default"),
                 "temperature": active_chat.get("temperature", 0.7),
-                "model": active_chat.get("model", "gemini-2.5-flash-lite")
+                "model": active_chat.get("model", "gemini-2.5-flash-lite"),
+                "updatedAt": now,
+                "createdAt": now
             }
             st.session_state.active_chat_id = new_id
             st.rerun()
@@ -71,7 +73,15 @@ def render_sidebar():
     
     # 3. Active Chats List
     st.markdown('<div class="chats-list-scrollable">', unsafe_allow_html=True)
-    for chat_id_key, chat_info in list(st.session_state.chats.items()):
+    
+    # Sort active chats by updatedAt descending
+    sorted_chats = sorted(
+        st.session_state.chats.items(),
+        key=lambda x: x[1].get("updatedAt", 0),
+        reverse=True
+    )
+    
+    for chat_id_key, chat_info in sorted_chats:
         is_active = (chat_id_key == st.session_state.active_chat_id)
         style_class = "sidebar-chat-active" if is_active else "sidebar-chat-inactive"
         st.markdown(f'<div class="{style_class}">', unsafe_allow_html=True)

@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 from src.api import update_backend_chat, stream_chat_from_api
 from backend.logger import app_logger as logger
@@ -83,6 +84,7 @@ def render_chat_area():
                         
                 # Sync locally (database is automatically updated on done inside WebSocket backend)
                 active_messages.append({"role": "assistant", "content": full_response})
+                st.session_state.chats[active_chat_id]["updatedAt"] = time.time()
                 st.rerun()
                 
     # 2. Chat Processing & Input Bar
@@ -108,9 +110,11 @@ def render_chat_area():
             success = update_backend_chat(chat_id=active_chat_id, name=new_title, token=user_token)
             if success:
                 active_chat["name"] = new_title
+                active_chat["updatedAt"] = time.time()
                 
         # Append locally
         active_messages.append({"role": "user", "content": prompt})
+        st.session_state.chats[active_chat_id]["updatedAt"] = time.time()
         st.session_state.stats_prompts += 1
         
         # Force redraw user's message immediately and start streaming

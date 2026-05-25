@@ -42,7 +42,9 @@ def sync_user_chats():
                     "messages": chat["messages"],
                     "persona": chat.get("persona", "default"),
                     "temperature": chat.get("temperature", 0.7),
-                    "model": chat.get("model", "gemini-2.5-flash-lite")
+                    "model": chat.get("model", "gemini-2.5-flash-lite"),
+                    "updatedAt": chat.get("updatedAt", chat.get("createdAt", time.time())),
+                    "createdAt": chat.get("createdAt", time.time())
                 }
                 
             # Initialize a default chat session if the user has zero chat documents
@@ -51,12 +53,15 @@ def sync_user_chats():
                 default_id = f"chat_{int(time.time() * 1000)}"
                 success = create_backend_chat(default_id, "🐧 Default Chat", token=user_token)
                 if success:
+                    now = time.time()
                     synced_chats[default_id] = {
                         "name": "🐧 Default Chat",
                         "messages": [],
                         "persona": "default",
                         "temperature": 0.7,
-                        "model": "gemini-2.5-flash-lite"
+                        "model": "gemini-2.5-flash-lite",
+                        "updatedAt": now,
+                        "createdAt": now
                     }
                     st.session_state.active_chat_id = default_id
             # Sync with session_state
@@ -73,13 +78,16 @@ def sync_user_chats():
             logger.error("Failed to load and sync chat sessions from database: %s", str(e), exc_info=True)
             # Fallback to in-memory if sync has exceptions
             if not st.session_state.chats:
+                now = time.time()
                 st.session_state.chats = {
                     "chat_default": {
                         "name": "🐧 Default Chat",
                         "messages": [],
                         "persona": "default",
                         "temperature": 0.7,
-                        "model": "gemini-2.5-flash-lite"
+                        "model": "gemini-2.5-flash-lite",
+                        "updatedAt": now,
+                        "createdAt": now
                     }
                 }
                 st.session_state.active_chat_id = "chat_default"

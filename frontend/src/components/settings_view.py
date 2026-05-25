@@ -74,6 +74,7 @@ def render_settings():
         active_chat["model"] = model_option
         active_chat["temperature"] = temperature
         active_chat["persona"] = persona
+        active_chat["updatedAt"] = time.time()
 
     st.write("")
     st.markdown('<div class="stats-container">', unsafe_allow_html=True)

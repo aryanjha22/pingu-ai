@@ -32,7 +32,8 @@ if not FIREBASE_WEB_API_KEY:
     FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY")
 
 auth_configured = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and FIREBASE_WEB_API_KEY)
-redirect_uri = "http://localhost:8501"
+redirect_uri = os.getenv("REDIRECT_URI", "http://localhost:8501")
+
 
 def exchange_code_for_firebase_user(auth_code: str):
     """Exchanges Google auth code for Google ID token, then signs in to Firebase."""

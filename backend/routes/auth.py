@@ -5,20 +5,14 @@ from backend import config
 from backend.services.firebase import verify_firebase_token
 from backend.logger import backend_logger as logger
 
-# Initialize HTTP Bearer security scheme
 security = HTTPBearer(auto_error=False)
 
 def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Security(security)) -> dict:
-    """
-    Dependency to fetch and validate the Firebase auth token from the request.
-    If credentials are correct, returns the verified user dictionary:
-        { "uid": ..., "email": ..., "displayName": ..., "photoURL": ... }
+    """FastAPI dependency to extract and verify the Firebase JWT.
     
-    If running in Local Developer Mode (Firebase not configured), allows "demo_token"
-    to bypass auth with a mock profile.
+    If auth is unconfigured in development, yields a mock demo profile.
     """
     if not credentials:
-        # Check if auth is configured
         if not config.firebase_configured:
             if config.IS_PROD:
                 logger.error("Attempted anonymous access in production mode.")
@@ -26,7 +20,7 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Secur
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Anonymous developer bypass is disabled in production mode."
                 )
-            # Fallback user in unconfigured dev mode
+            # Local dev mode bypass
             logger.info("Accessing endpoint in Local Developer Mode without credentials. Granting mock demo user.")
             return {
                 "uid": "demo_user",
@@ -45,7 +39,6 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Secur
         return user_profile
     except Exception as e:
         logger.error("Security Authentication Failed: %s", str(e))
-        # If in unconfigured developer mode, we can allow simple bypass
         if not config.firebase_configured:
             if config.IS_PROD:
                 raise HTTPException(

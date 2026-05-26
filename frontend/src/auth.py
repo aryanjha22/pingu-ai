@@ -12,12 +12,11 @@ if str(root_dir) not in sys.path:
 
 from backend.logger import app_logger as logger
 
-# ----------------- CREDENTIALS CONFIGURATION -----------------
+# Credentials Configuration
 GOOGLE_CLIENT_ID = None
 GOOGLE_CLIENT_SECRET = None
 FIREBASE_WEB_API_KEY = None
 
-# Safely extract from st.secrets if it exists
 try:
     GOOGLE_CLIENT_ID = st.secrets.get("GOOGLE_CLIENT_ID") or st.secrets.get("google_client_id")
     GOOGLE_CLIENT_SECRET = st.secrets.get("GOOGLE_CLIENT_SECRET")
@@ -25,7 +24,6 @@ try:
 except Exception:
     pass
 
-# Fallback to standard environment variables
 if not GOOGLE_CLIENT_ID:
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 if not GOOGLE_CLIENT_SECRET:
@@ -33,12 +31,11 @@ if not GOOGLE_CLIENT_SECRET:
 if not FIREBASE_WEB_API_KEY:
     FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY")
 
-# Check if production Auth is fully configured
 auth_configured = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and FIREBASE_WEB_API_KEY)
 redirect_uri = "http://localhost:8501"
 
 def exchange_code_for_firebase_user(auth_code: str):
-    """Exchanges Google authorization code for Google ID token, and then swaps it for Firebase JWT."""
+    """Exchanges Google auth code for Google ID token, then signs in to Firebase."""
     logger.info("Exchanging authorization code for Google tokens...")
     token_url = "https://oauth2.googleapis.com/token"
     data = {
@@ -50,7 +47,7 @@ def exchange_code_for_firebase_user(auth_code: str):
     }
     
     try:
-        # 1. Exchange for Google ID Token
+        # Get Google ID Token
         res = requests.post(token_url, data=data, timeout=10)
         if res.status_code != 200:
             st.error(f"Failed to fetch Google OAuth tokens: {res.text}")
@@ -63,7 +60,7 @@ def exchange_code_for_firebase_user(auth_code: str):
             st.error("No id_token returned in Google OAuth response.")
             return None
             
-        # 2. Swap Google ID token for Firebase Auth ID Token
+        # Swap Google token for Firebase ID Token
         logger.info("Exchanging Google ID token for Firebase credentials...")
         firebase_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={FIREBASE_WEB_API_KEY}"
         payload = {
@@ -80,7 +77,6 @@ def exchange_code_for_firebase_user(auth_code: str):
             return None
             
         fb_data = fb_res.json()
-        # Extract profile details
         user_info = {
             "uid": fb_data.get("localId"),
             "email": fb_data.get("email"),
@@ -98,7 +94,7 @@ def exchange_code_for_firebase_user(auth_code: str):
         return None
 
 def handle_oauth_callback():
-    """Listens for Google OAuth callback parameters and performs authentication if present."""
+    """Checks query params for Google OAuth callback code and signs in user."""
     if st.session_state.user is None and auth_configured:
         q_params = st.query_params
         if "code" in q_params:
@@ -107,12 +103,11 @@ def handle_oauth_callback():
                 user_profile = exchange_code_for_firebase_user(auth_code)
                 if user_profile:
                     st.session_state.user = user_profile
-                    # Clear code param to clean browser URL
                     st.query_params.clear()
                     st.rerun()
 
 def get_google_auth_url() -> str:
-    """Generates the Google OAuth authorization redirect URL."""
+    """Generates the Google OAuth redirection URL."""
     google_auth_params = {
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": redirect_uri,

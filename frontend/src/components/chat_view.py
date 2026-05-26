@@ -4,7 +4,7 @@ from src.api import update_backend_chat, stream_chat_from_api
 from backend.logger import app_logger as logger
 
 def render_chat_area():
-    """Renders the chat viewport, message log, input prompts, and triggers WebSocket streaming."""
+    """Renders the chat interface and handles real-time response streaming."""
     user_token = st.session_state.user.get("token")
     active_chat_id = st.session_state.active_chat_id
     active_chat = st.session_state.chats.get(active_chat_id, {})
@@ -15,10 +15,9 @@ def render_chat_area():
         
     active_messages = active_chat["messages"]
     
-    # Render Chat Area Title
     st.markdown('<h1 class="gradient-title">🐧 Pingu AI</h1>', unsafe_allow_html=True)
     
-    # 1. Message Logs Viewer (Always wrapped in a height-constrained container)
+    # Message viewport
     with st.container(height=500, border=False):
         if len(active_messages) == 0:
             st.markdown('<div class="empty-chat-welcome">', unsafe_allow_html=True)
@@ -30,7 +29,7 @@ def render_chat_area():
                 with st.chat_message(message["role"], avatar=avatar if avatar else None):
                     st.markdown(message["content"])
             
-            # Check if we have a user prompt that was just appended and requires an assistant stream
+            # If the last message is from the user, trigger response stream
             if active_messages and active_messages[-1]["role"] == "user":
                 with st.chat_message("assistant", avatar="🐧"):
                     message_placeholder = st.empty()
@@ -58,7 +57,6 @@ def render_chat_area():
                     
                     full_response = ""
                     try:
-                        # Establish WebSocket streaming and pass details
                         response_generator = stream_chat_from_api(
                             messages=active_messages,
                             chat_id=active_chat_id,
@@ -82,12 +80,11 @@ def render_chat_area():
                         full_response = f"⚠️ **Error initializing client:** {str(e)}"
                         message_placeholder.markdown(full_response)
                         
-                # Sync locally (database is automatically updated on done inside WebSocket backend)
                 active_messages.append({"role": "assistant", "content": full_response})
                 st.session_state.chats[active_chat_id]["updatedAt"] = time.time()
                 st.rerun()
                 
-    # 2. Chat Processing & Input Bar
+    # Chat Input
     prompt = st.chat_input("Message Pingu...")
     
     if st.session_state.input_value:
@@ -97,7 +94,7 @@ def render_chat_area():
     if prompt:
         logger.info("Prompt submitted by user: %r", prompt)
         
-        # Dynamic chat renaming on the first prompt submission
+        # Auto-rename "New Chat" session on first prompt submission
         if active_chat.get("name") == "New Chat" and len(active_messages) == 0:
             words = prompt.strip().split()
             title = " ".join(words[:4])
@@ -105,17 +102,13 @@ def render_chat_area():
                 title += "..."
             new_title = f"💬 {title}"
             
-            # Save renamed chat in database
             logger.info("Automatically renaming chat from first prompt...")
             success = update_backend_chat(chat_id=active_chat_id, name=new_title, token=user_token)
             if success:
                 active_chat["name"] = new_title
                 active_chat["updatedAt"] = time.time()
                 
-        # Append locally
         active_messages.append({"role": "user", "content": prompt})
         st.session_state.chats[active_chat_id]["updatedAt"] = time.time()
         st.session_state.stats_prompts += 1
-        
-        # Force redraw user's message immediately and start streaming
         st.rerun()

@@ -3,7 +3,7 @@ import sys
 import time
 from pathlib import Path
 
-# Add project root to sys.path to enable direct backend import
+# Ensure project root is in sys.path for direct imports
 root_dir = Path(__file__).resolve().parent.parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
@@ -15,14 +15,12 @@ from backend import config
 from backend.routes.chat import router as chat_router
 from backend.logger import backend_logger as logger
 
-# Initialize FastAPI application
 app = FastAPI(
     title="Pingu AI Backend",
     description="FastAPI-based streaming backend for the Pingu AI Assistant",
     version="1.1.0"
 )
 
-# Configure CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.ALLOWED_ORIGINS,
@@ -31,21 +29,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Simple in-memory rate-limiter store
-# Map IP address -> list of request timestamps
+# In-memory IP-based rate limiting for basic DDoS mitigation
 RATE_LIMIT_STORE = {}
-RATE_LIMIT_WINDOW = 60       # 1 minute window
-RATE_LIMIT_MAX_REQUESTS = 60 # max 60 requests per minute
+RATE_LIMIT_WINDOW = 60       # seconds
+RATE_LIMIT_MAX_REQUESTS = 60 
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    """Built-in IP-based rate limiting to prevent endpoint abuse on free tiers."""
-    # Only rate limit backend API paths
     if request.url.path.startswith("/api"):
         client_ip = request.client.host if request.client else "unknown"
         now = time.time()
         
-        # Get and clean client history
+        # Prune expired requests
         timestamps = RATE_LIMIT_STORE.get(client_ip, [])
         timestamps = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW]
         
@@ -61,11 +56,9 @@ async def rate_limit_middleware(request: Request, call_next):
         
     return await call_next(request)
 
-# Mount APIRouters
 app.include_router(chat_router)
 
 @app.get("/health")
 def health_check():
-    """Simple health check endpoint."""
     logger.info("Health check endpoint hit.")
     return {"status": "ok", "message": "Pingu AI Backend is up and running!"}

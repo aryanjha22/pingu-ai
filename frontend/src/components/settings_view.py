@@ -4,7 +4,7 @@ from src.api import update_backend_chat, delete_backend_chat, create_backend_cha
 from backend.logger import app_logger as logger
 
 def render_settings():
-    """Renders the settings panel containing models select, sliders, and chat CRUD controls."""
+    """Renders the configuration panel, knowledge base documents, and chat controls."""
     st.markdown('<div class="glass-card-title">⚙️ Settings</div>', unsafe_allow_html=True)
     
     user_token = st.session_state.user.get("token")
@@ -15,7 +15,6 @@ def render_settings():
         st.info("No active chat selected.")
         return
         
-    # Load settings from selected chat
     current_model = active_chat.get("model", "gemini-2.5-flash-lite")
     current_temp = active_chat.get("temperature", 0.7)
     current_persona = active_chat.get("persona", "default")
@@ -60,7 +59,7 @@ def render_settings():
     )
     persona = persona_map.get(persona_display, "default")
     
-    # Detect modifications and automatically update details in persistence
+    # Auto-save changes to the database on change detection
     if (model_option != current_model or temperature != current_temp or persona != current_persona):
         logger.info("Chat configuration settings changed. Syncing updates with database...")
         update_backend_chat(
@@ -70,13 +69,12 @@ def render_settings():
             model=model_option,
             token=user_token
         )
-        # Update local values instantly
         active_chat["model"] = model_option
         active_chat["temperature"] = temperature
         active_chat["persona"] = persona
         active_chat["updatedAt"] = time.time()
 
-    # 4. Knowledge Base (RAG Documents)
+    # Knowledge Base (RAG Documents)
     st.markdown('<hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 1.5rem 0;" />', unsafe_allow_html=True)
     st.markdown('<div class="glass-card-title">📚 Knowledge Base</div>', unsafe_allow_html=True)
     
@@ -110,7 +108,6 @@ def render_settings():
                     })
                     st.rerun()
 
-    # List Uploaded Documents
     documents = active_chat.get("documents", [])
     if documents:
         st.markdown('<div style="margin-top: 0.5rem; font-weight: 500;">Uploaded Documents:</div>', unsafe_allow_html=True)
@@ -143,7 +140,6 @@ def render_settings():
     st.markdown('</div>', unsafe_allow_html=True)
     st.write("")
     
-    # Clear Messages CRUD Sync
     st.markdown('<div class="settings-actions-container">', unsafe_allow_html=True)
     if st.button("🧹 Clear Messages", use_container_width=True, key="clear_chat_messages_btn"):
         logger.info("Clear Chat History button clicked. Syncing with database...")
@@ -151,13 +147,11 @@ def render_settings():
         if success:
             active_chat["messages"] = []
             if not active_chat_id.startswith("chat_default"):
-                # Reset name
                 update_backend_chat(chat_id=active_chat_id, name="New Chat", token=user_token)
                 active_chat["name"] = "New Chat"
             st.session_state.stats_prompts = 0
             st.rerun()
             
-    # Delete Chat CRUD Sync
     if st.button("🗑️ Delete Chat", use_container_width=True, type="primary", key="delete_chat_btn"):
         logger.info("Delete Chat button clicked. Deleting from backend...")
         success = delete_backend_chat(chat_id=active_chat_id, token=user_token)
@@ -166,7 +160,6 @@ def render_settings():
             if st.session_state.chats:
                 st.session_state.active_chat_id = list(st.session_state.chats.keys())[0]
             else:
-                # Fallback recreate
                 default_id = f"chat_{int(time.time() * 1000)}"
                 create_backend_chat(default_id, "🐧 Default Chat", token=user_token)
                 st.session_state.active_chat_id = default_id

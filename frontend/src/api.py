@@ -13,18 +13,18 @@ if str(root_dir) not in sys.path:
 from backend.logger import app_logger as logger
 
 def get_backend_url() -> str:
-    """Retrieves backend API base URL from env or defaults to local host."""
+    """Gets backend base URL from env or defaults to localhost."""
     return os.getenv("PINGU_BACKEND_URL", "http://localhost:8000")
 
 def get_headers(token: str = None) -> dict:
-    """Generates standard request headers with Authorization Bearer token."""
+    """Generates standard json headers with auth bearer token."""
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     return headers
 
 def fetch_user_chats(token: str = None) -> list:
-    """Fetches all stored chat sessions from the backend for the current user."""
+    """Fetches user chat sessions from backend."""
     url = f"{get_backend_url()}/api/chats"
     logger.info("REST: Fetching user chats from backend URL: %s", url)
     try:
@@ -46,7 +46,7 @@ def create_backend_chat(
     model: str = "gemini-2.5-flash-lite",
     token: str = None
 ) -> bool:
-    """Registers a new chat session metadata in backend persistence."""
+    """Creates a new chat session in backend."""
     url = f"{get_backend_url()}/api/chats"
     payload = {
         "chat_id": chat_id,
@@ -72,7 +72,7 @@ def update_backend_chat(
     token: str = None,
     messages: list = None
 ) -> bool:
-    """Updates settings, name, or messages for a chat session in backend persistence."""
+    """Updates settings or messages history in backend."""
     url = f"{get_backend_url()}/api/chats/{chat_id}"
     payload = {}
     if name is not None:
@@ -95,7 +95,7 @@ def update_backend_chat(
         return False
 
 def delete_backend_chat(chat_id: str, token: str = None) -> bool:
-    """Deletes a chat session permanently in backend persistence."""
+    """Deletes a chat session in backend."""
     url = f"{get_backend_url()}/api/chats/{chat_id}"
     logger.info("REST: Deleting chat ID: %s", chat_id)
     try:
@@ -113,12 +113,8 @@ def stream_chat_from_api(
     model: str = "gemini-2.5-flash-lite",
     token: str = None
 ):
-    """
-    Streams response from the Pingu FastAPI backend using a WebSocket connection.
-    Passes the auth JWT as a query param and session metadata in payload.
-    """
+    """Streams responses from backend over WebSocket connection."""
     backend_url = get_backend_url()
-    # Convert HTTP URL to WS URL
     ws_url = backend_url.replace("http://", "ws://").replace("https://", "wss://")
     
     ws_endpoint = f"{ws_url}/api/ws/chat"
@@ -174,7 +170,7 @@ def stream_chat_from_api(
             pass
 
 def upload_chat_document_api(chat_id: str, file_bytes: bytes, filename: str, token: str = None) -> dict:
-    """Uploads a document for RAG indexing to the backend."""
+    """Uploads document to backend for RAG indexing."""
     url = f"{get_backend_url()}/api/chats/{chat_id}/documents"
     headers = {}
     if token:
@@ -193,7 +189,7 @@ def upload_chat_document_api(chat_id: str, file_bytes: bytes, filename: str, tok
         return {"error": str(e)}
 
 def delete_chat_document_api(chat_id: str, doc_id: str, token: str = None) -> bool:
-    """Deletes an uploaded RAG document from the backend."""
+    """Deletes uploaded RAG document from backend."""
     url = f"{get_backend_url()}/api/chats/{chat_id}/documents/{doc_id}"
     logger.info("REST: Deleting document ID: %s from chat ID: %s", doc_id, chat_id)
     try:

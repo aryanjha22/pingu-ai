@@ -6,7 +6,7 @@ from backend.logger import backend_logger as logger
 db = None
 firebase_app = None
 
-# Initialize Firebase Admin SDK
+# Initialize Firebase Admin
 if config.firebase_configured:
     try:
         if config.firebase_sa_dict:
@@ -27,11 +27,7 @@ else:
 
 
 def verify_firebase_token(token: str) -> dict:
-    """
-    Verifies a Firebase ID token.
-    If the token is 'demo_token', immediately returns the mock guest profile (unless in production).
-    If Firebase is configured, it performs real token verification.
-    """
+    """Verifies a Firebase ID token. Swaps 'demo_token' with mock guest profile in dev."""
     if token == "demo_token":
         if config.IS_PROD:
             logger.warning("Bypass token 'demo_token' rejected in production environment.")

@@ -27,7 +27,7 @@ def init_session_state():
         st.session_state.input_value = None
 
 def sync_user_chats():
-    """Syncs the active chat sessions from Firestore backend once authenticated."""
+    """Syncs active chat sessions from Firestore backend."""
     if st.session_state.user is None:
         return
 
@@ -48,7 +48,7 @@ def sync_user_chats():
                     "createdAt": chat.get("createdAt", time.time())
                 }
                 
-            # Initialize a default chat session if the user has zero chat documents
+            # Create a default chat session if none exist
             if not synced_chats:
                 logger.info("Initializing first default chat session for user.")
                 default_id = f"chat_{int(time.time() * 1000)}"
@@ -65,7 +65,7 @@ def sync_user_chats():
                         "createdAt": now
                     }
                     st.session_state.active_chat_id = default_id
-            # Sync with session_state
+            
             if not synced_chats:
                 raise ValueError("Database returned zero chats and failed to register default session.")
 
@@ -77,7 +77,7 @@ def sync_user_chats():
 
         except Exception as e:
             logger.error("Failed to load and sync chat sessions from database: %s", str(e), exc_info=True)
-            # Fallback to in-memory if sync has exceptions
+            # Fallback to local in-memory state on error
             if not st.session_state.chats:
                 now = time.time()
                 st.session_state.chats = {

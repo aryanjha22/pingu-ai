@@ -3,10 +3,10 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Resolve workspace directory
+# Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load env variables dynamically from backend/ or root
+# Load environment variables
 backend_env = BASE_DIR / "backend" / ".env"
 root_env = BASE_DIR / ".env"
 if backend_env.exists():
@@ -16,14 +16,12 @@ elif root_env.exists():
 else:
     load_dotenv()
 
-# Environment type
 IS_PROD = os.getenv("ENV", "development").lower() == "production" or os.getenv("PROD", "false").lower() == "true"
 
-# CORS configuration
 CORS_ORIGINS_RAW = os.getenv("ALLOWED_ORIGINS", "*")
 ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_RAW.split(",")] if CORS_ORIGINS_RAW else ["*"]
 
-# API Keys & Credentials
+# Credentials & APIs
 GEMINI_API_KEY = os.getenv("Gemini_API_Key") or os.getenv("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     os.environ["GEMINI_API_KEY"] = GEMINI_API_KEY
@@ -35,11 +33,10 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY")
 
-# Firebase Service Account (JSON file path or raw JSON string content)
 FIREBASE_SERVICE_ACCOUNT_JSON = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
 FIREBASE_SERVICE_ACCOUNT_JSON_CONTENT = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON_CONTENT")
 
-# Dynamically resolve relative path for the Firebase Service Account JSON if provided
+# Resolve relative path for Firebase Service Account JSON
 if FIREBASE_SERVICE_ACCOUNT_JSON:
     sa_path = Path(FIREBASE_SERVICE_ACCOUNT_JSON)
     if not sa_path.is_absolute():
@@ -52,7 +49,7 @@ if FIREBASE_SERVICE_ACCOUNT_JSON:
                 FIREBASE_SERVICE_ACCOUNT_JSON = str(p.resolve())
                 break
 
-# Parse Service Account content if provided as a raw string
+# Parse service account JSON dict if provided directly as env string
 firebase_sa_dict = None
 if FIREBASE_SERVICE_ACCOUNT_JSON_CONTENT:
     try:
@@ -60,21 +57,18 @@ if FIREBASE_SERVICE_ACCOUNT_JSON_CONTENT:
     except Exception:
         pass
 
-# Configurations state
 firebase_configured = False
 if firebase_sa_dict or (FIREBASE_SERVICE_ACCOUNT_JSON and os.path.exists(FIREBASE_SERVICE_ACCOUNT_JSON)):
     firebase_configured = True
 
 auth_configured = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and FIREBASE_WEB_API_KEY)
 
-# Memory configuration for context trimming & summarization
+# Session / Memory thresholds
 CHAT_WINDOW_SIZE = 10
 CHAT_SUMMARIZE_THRESHOLD = 20
 
-# Default LLM Model
 DEFAULT_MODEL = "gemma-4-26b-a4b-it"
 
-# LLM Persona and prompts configuration
 SYSTEM_PROMPTS = {
     "default": (
         "You are Pingu AI, a helpful, polite, intelligent, and comprehensive AI assistant. "

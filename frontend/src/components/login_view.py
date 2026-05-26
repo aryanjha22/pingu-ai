@@ -3,9 +3,9 @@ from src.auth import auth_configured, get_google_auth_url
 from backend.logger import app_logger as logger
 
 def render_login_view():
-    """Renders a stunning, premium, glassmorphic login view for Pingu AI."""
+    """Renders the glassmorphic login screen for Pingu AI."""
 
-    # ── Handle guest login via query param (triggered by HTML <a href="?guest=1">) ──
+    # Guest authentication callback trigger
     if st.query_params.get("guest") == "1":
         logger.info("User selected Guest Demo Mode. Logging in with mock token.")
         st.query_params.clear()
@@ -18,11 +18,10 @@ def render_login_view():
         }
         st.rerun()
 
-    # Inject page marker so CSS can target this page with glow/gradient effects
     st.markdown('<div class="login-marker"></div>', unsafe_allow_html=True)
 
     with st.container(border=False):
-        # 1. Logo & Header
+        # Header
         st.markdown("""
         <div class="login-logo-container"><span class="login-logo">🐧</span></div>
         <div class="login-title">Pingu AI</div>
@@ -32,7 +31,7 @@ def render_login_view():
         </div>
         """, unsafe_allow_html=True)
 
-        # 2. Developer Warning Banner (only shown when auth creds are missing)
+        # Developer warning banner
         if not auth_configured:
             st.markdown("""
             <div class="dev-mode-banner">
@@ -47,7 +46,7 @@ def render_login_view():
             </div>
             """, unsafe_allow_html=True)
 
-        # 3. & 4. Sign-in buttons — both rendered as pure styled HTML for pixel-perfect aesthetics
+        # Action Buttons
         if auth_configured:
             auth_url = get_google_auth_url()
             google_btn = f"""
@@ -82,7 +81,6 @@ def render_login_view():
         {guest_btn}
         """, unsafe_allow_html=True)
 
-    # 5. Page Footer — fixed to bottom-right, outside the card
     st.markdown(
         '<div class="login-card-footer">Crafted with ❤️ by the Pingu AI Team</div>',
         unsafe_allow_html=True

@@ -6,7 +6,6 @@ from google.genai import types
 from backend import config
 from backend.logger import backend_logger as logger
 
-# Initialize Gemini Client
 client = genai.Client()
 
 def stream_chat_response(
@@ -16,24 +15,11 @@ def stream_chat_response(
     model: Optional[str] = None,
     summary: str = ""
 ):
-    """
-    Streams responses from the Gemini API using system instructions and configuration.
-
-    Args:
-        messages (list): List of messages in Streamlit format: [{'role': 'user'|'assistant', 'content': '...'}]
-        persona (str): Key of the system prompt to use
-        temperature (float): Controls creativity (0.0 to 2.0)
-        model (str): Gemini model identifier
-        summary (str): Optional running summary of older messages
-
-    Yields:
-        str: Response text chunks
-    """
+    """Streams responses from Gemini API using configured system instructions."""
     active_model = model or config.DEFAULT_MODEL
     logger.info("Initializing chat stream. Model: %s | Temp: %s | Persona: %s", active_model, temperature, persona)
     
-    # Convert frontend message structure to google-genai format
-    # Roles in Streamlit are 'user' and 'assistant', but Gemini expects 'user' and 'model'
+    # Map frontend role 'assistant' to Gemini expected 'model'
     contents = []
     for msg in messages:
         role = "model" if msg["role"] == "assistant" else "user"
@@ -50,7 +36,6 @@ def stream_chat_response(
         preview = last_msg["content"][:100] + ("..." if len(last_msg["content"]) > 100 else "")
         logger.info("Latest message from %s: %s", last_msg["role"], repr(preview))
 
-    # Retrieve the system instruction securely from configuration prompts mapping
     system_instruction = config.SYSTEM_PROMPTS.get(persona, config.SYSTEM_PROMPTS["default"])
     if summary:
         system_instruction += f"\n\n[SUMMARY OF OLDER MESSAGES IN THIS CHAT]\n{summary}\n[END OF SUMMARY]"

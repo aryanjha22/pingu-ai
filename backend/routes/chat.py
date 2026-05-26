@@ -31,16 +31,14 @@ class ChatUpdateRequest(BaseModel):
     messages: Optional[List[MessageItem]] = None
 
 
-# REST ENDPOINTS
+# REST Endpoints
 
 @router.get("/chats")
 def list_chats(user: dict = Depends(get_current_user)):
-    """List all chat sessions belonging to the authenticated user."""
     return chat_store.get_user_chats(user["uid"])
 
 @router.post("/chats")
 def create_chat(payload: ChatCreateRequest, user: dict = Depends(get_current_user)):
-    """Create a new chat session for the authenticated user."""
     success = chat_store.create_chat(
         uid=user["uid"],
         chat_id=payload.chat_id,
@@ -58,8 +56,6 @@ def create_chat(payload: ChatCreateRequest, user: dict = Depends(get_current_use
 
 @router.put("/chats/{chat_id}")
 def update_chat(chat_id: str, payload: ChatUpdateRequest, user: dict = Depends(get_current_user)):
-    """Update settings, title, or message history for a chat session."""
-    # Handle settings update
     success = chat_store.update_chat_settings(
         chat_id=chat_id,
         name=payload.name,
@@ -73,7 +69,6 @@ def update_chat(chat_id: str, payload: ChatUpdateRequest, user: dict = Depends(g
             detail="Failed to update chat settings in database."
         )
         
-    # Handle messages history update if provided
     if payload.messages is not None:
         messages_list = [{"role": msg.role, "content": msg.content} for msg in payload.messages]
         success_msg = chat_store.update_chat_messages(chat_id, messages_list)
@@ -87,7 +82,6 @@ def update_chat(chat_id: str, payload: ChatUpdateRequest, user: dict = Depends(g
 
 @router.delete("/chats/{chat_id}")
 def delete_chat(chat_id: str, user: dict = Depends(get_current_user)):
-    """Delete an entire chat session permanently."""
     success = chat_store.delete_chat(chat_id)
     if not success:
         raise HTTPException(
@@ -103,9 +97,8 @@ async def upload_chat_document(
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user)
 ):
-    """Upload and index a document for RAG in Pinecone."""
+    """Parses, embeds, and indexes an uploaded document (max 5 docs, 5MB each)."""
     try:
-        # 1. Enforce Document Count Limit per chat (Max 5 documents)
         chat = chat_store.get_chat(chat_id)
         if chat:
             existing_docs = chat.get("documents", [])
@@ -117,8 +110,7 @@ async def upload_chat_document(
 
         content = await file.read()
         
-        # 2. Enforce File Size Limit (Max 5MB)
-        MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+        MAX_FILE_SIZE = 5 * 1024 * 1024
         if len(content) > MAX_FILE_SIZE:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -128,10 +120,8 @@ async def upload_chat_document(
         import uuid
         doc_id = f"doc_{uuid.uuid4().hex}"
         
-        # Parse, chunk, and index in Pinecone
         index_document(chat_id=chat_id, doc_id=doc_id, filename=file.filename, file_content=content)
         
-        # Save in database
         success = chat_store.add_chat_document(chat_id=chat_id, doc_id=doc_id, filename=file.filename)
         if not success:
             delete_document_vectors(chat_id=chat_id, doc_id=doc_id)
@@ -142,7 +132,6 @@ async def upload_chat_document(
             
         return {"status": "ok", "doc_id": doc_id, "filename": file.filename}
     except HTTPException:
-        # Re-raise HTTPExceptions so they aren't caught by the general catch-all below
         raise
     except Exception as e:
         logger.error("Error uploading document: %s", str(e), exc_info=True)
@@ -157,7 +146,7 @@ def delete_chat_document(
     doc_id: str,
     user: dict = Depends(get_current_user)
 ):
-    """Remove a document's vector indices and database metadata."""
+    """Deletes document vectors from Pinecone and references from the database."""
     try:
         delete_document_vectors(chat_id=chat_id, doc_id=doc_id)
         success = chat_store.remove_chat_document(chat_id=chat_id, doc_id=doc_id)
@@ -175,25 +164,19 @@ def delete_chat_document(
         )
 
 
-# WEBSOCKET STREAMING ENDPOINT
+# WebSocket Endpoint
 
 @router.websocket("/ws/chat")
 async def websocket_chat_endpoint(websocket: WebSocket, token: Optional[str] = Query(None)):
-    """
-    Persistent WebSocket endpoint for bidirectional, real-time streamed chat.
-    Performs user authentication using Firebase Token or developer bypass and
-    automatically persists conversations in the active database storage.
-    """
+    """Handles bidirectional, real-time streamed chat with JWT verification and database auto-sync."""
     await websocket.accept()
     logger.info("WebSocket connection requested.")
 
-    # WebSocket authentication
     user = None
     try:
         if token:
             user = verify_firebase_token(token)
         else:
-            # Check if we can use developer local fallback
             if not config.firebase_configured:
                 user = {
                     "uid": "demo_user",
@@ -215,7 +198,6 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: Optional[str] = Q
 
     try:
         while True:
-            # Await incoming message payload
             data = await websocket.receive_json()
             logger.info("Received WebSocket chat payload from UID %s: %s", user["uid"], {k: v for k, v in data.items() if k != "messages"})
 
@@ -225,21 +207,17 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: Optional[str] = Q
             temperature = data.get("temperature", 0.7)
             model = data.get("model") or config.DEFAULT_MODEL
 
-            # Convert JSON structure to backend lists
             messages_dict = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
 
             current_summary = ""
-            # Save the user's latest incoming message to persistence if chat_id is present
             if chat_id:
                 chat_store.update_chat_messages(chat_id, messages_dict)
-                # Apply context trimming & background summarization
                 from backend.services.memory import manage_chat_memory
                 messages_dict, current_summary = manage_chat_memory(chat_id, messages_dict)
 
-            # RAG Context retrieval and injection
+            # RAG Context injection
             augmented_messages = list(messages_dict)
             if chat_id and messages_dict:
-                # Find last user message
                 last_user_idx = -1
                 for idx in range(len(messages_dict) - 1, -1, -1):
                     if messages_dict[idx]["role"] == "user":
@@ -263,7 +241,6 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: Optional[str] = Q
                         }
 
             try:
-                # Trigger generation stream
                 generator = stream_chat_response(
                     messages=augmented_messages,
                     persona=persona,
@@ -281,14 +258,12 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: Optional[str] = Q
                     logger.info("WebSocket disconnected during stream. Saving partial response to database.")
                     raise
                 finally:
-                    # Append assistant response (even if partial/interrupted) and persist to database
                     if chat_id and full_response:
                         messages_dict.append({"role": "assistant", "content": full_response})
                         chat_store.update_chat_messages(chat_id, messages_dict)
 
                 await websocket.send_json({"type": "done"})
             except WebSocketDisconnect:
-                # Propagate this up so that the outer WebSocketDisconnect handler catches it cleanly
                 raise
             except Exception as e:
                 logger.error("Error generating stream response over WS: %s", str(e), exc_info=True)

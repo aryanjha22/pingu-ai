@@ -2,17 +2,14 @@ import logging
 import sys
 from pathlib import Path
 
-# Common log formatter
+# Common log format
 formatter = logging.Formatter(
     fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
 def setup_console_logger(name: str = "pingu.app") -> logging.Logger:
-    """
-    Logger that strictly prints to standard error (console).
-    Used by app.py to display clean UI/flow logs in the terminal.
-    """
+    """Console-only logger for terminal logging (app/UI flow)."""
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
     
@@ -26,12 +23,9 @@ def setup_console_logger(name: str = "pingu.app") -> logging.Logger:
     
     logger.propagate = False
     return logger
-
+ 
 def setup_file_logger(name: str = "pingu.backend", filename: str = "pingu.log") -> logging.Logger:
-    """
-    Logger that strictly writes to a dedicated log file in the project root.
-    Used by llm.py to keep backend API logs isolated from the terminal console.
-    """
+    """File-only logger for backend API/service traces to keep console clean."""
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
     
@@ -47,7 +41,7 @@ def setup_file_logger(name: str = "pingu.backend", filename: str = "pingu.log") 
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
     except Exception as e:
-        # Fallback to console stderr if writing to file fails
+        # Fallback to stderr if file path is unwritable
         console_fallback = logging.StreamHandler(sys.stderr)
         console_fallback.setFormatter(formatter)
         logger.addHandler(console_fallback)
@@ -56,7 +50,6 @@ def setup_file_logger(name: str = "pingu.backend", filename: str = "pingu.log") 
     logger.propagate = False
     return logger
 
-# Export pre-configured loggers
 app_logger = setup_console_logger("pingu.app")
 backend_logger = setup_file_logger("pingu.backend", "pingu.log")
 

@@ -9,24 +9,22 @@ from google.genai import types
 from backend.logger import backend_logger as logger
 import pypdf
 
-# Initialize Pinecone Client placeholders
 pc = None
 index = None
 
 def init_pinecone():
-    """Initializes the Pinecone client and index lazily, supporting dynamic config reloads."""
+    """Lazily initializes Pinecone client/index, supporting configuration reloads."""
     global pc, index
     if index is not None:
         return index
 
-    # Dynamically reload environment/config to pick up freshly set .env keys without server restarts
+    # Dynamic config reload to pick up freshly written .env vars
     try:
         from importlib import reload
         reload(config)
     except Exception as e:
         logger.warning("Failed to reload configuration dynamically: %s", str(e))
 
-    # Retrieve API key
     api_key = config.PINECONE_API_KEY or os.getenv("PINECONE_API_KEY")
     if not api_key:
         raise ValueError("PINECONE_API_KEY is not set. Please configure it in your backend/.env file and ensure it is saved.")
@@ -36,7 +34,7 @@ def init_pinecone():
         pc = Pinecone(api_key=api_key)
         index_name = config.PINECONE_INDEX_NAME or os.getenv("PINECONE_INDEX_NAME", "pingu-rag")
         
-        # Ensure index exists
+        # Verify/create target index
         existing_indexes = [idx.name for idx in pc.list_indexes()]
         if index_name not in existing_indexes:
             logger.info("Pinecone Index '%s' not found. Creating serverless index...", index_name)
@@ -49,7 +47,6 @@ def init_pinecone():
                     region="us-east-1"
                 )
             )
-            # Wait for index to be ready
             while not pc.describe_index(index_name).status['ready']:
                 time.sleep(1)
                 
@@ -61,7 +58,7 @@ def init_pinecone():
         raise ValueError(f"Failed to initialize Pinecone: {str(e)}")
 
 def extract_text_from_file(file_content: bytes, filename: str) -> str:
-    """Extracts text content from PDF, TXT, or MD file bytes."""
+    """Extracts content from PDF, TXT, or MD files."""
     ext = filename.split(".")[-1].lower()
     if ext == "pdf":
         try:
@@ -76,7 +73,6 @@ def extract_text_from_file(file_content: bytes, filename: str) -> str:
             logger.error("PDF Parsing error for %s: %s", filename, str(e))
             raise ValueError(f"Failed to parse PDF: {str(e)}")
     else:
-        # Assume text/md
         try:
             return file_content.decode("utf-8", errors="ignore")
         except Exception as e:
@@ -84,7 +80,7 @@ def extract_text_from_file(file_content: bytes, filename: str) -> str:
             raise ValueError(f"Failed to read text file: {str(e)}")
 
 def chunk_text(text: str, chunk_size: int = 800, overlap: int = 80) -> list[str]:
-    """Splits text into chunks of specified size and overlap."""
+    """Splits text into overlapping chunks."""
     chunks = []
     if not text:
         return chunks
@@ -98,14 +94,13 @@ def chunk_text(text: str, chunk_size: int = 800, overlap: int = 80) -> list[str]
     return [c for c in chunks if len(c) > 10]
 
 def get_embedding(text: str) -> list[float]:
-    """Generates embedding vector using Gemini's configured model, constrained to 768 dimensions."""
+    """Generates a 768-dimension embedding via Gemini embedding service."""
     try:
         response = client.models.embed_content(
             model="gemini-embedding-001",
             contents=text,
             config=types.EmbedContentConfig(output_dimensionality=768)
         )
-        # Handle response formats robustly
         if hasattr(response, 'embeddings') and response.embeddings:
             return response.embeddings[0].values
         elif hasattr(response, 'embedding') and response.embedding:
@@ -116,7 +111,7 @@ def get_embedding(text: str) -> list[float]:
         raise
 
 def index_document(chat_id: str, doc_id: str, filename: str, file_content: bytes):
-    """Parses, chunks, embeds, and indexes a document into Pinecone namespace (chat_id)."""
+    """Parses, chunks, embeds, and indexes a file into Pinecone namespace."""
     active_index = init_pinecone()
     
     text = extract_text_from_file(file_content, filename)
@@ -142,7 +137,7 @@ def index_document(chat_id: str, doc_id: str, filename: str, file_content: bytes
             }
         })
         
-        # Batch upsert in sizes of 100
+        # Batch size of 100
         if len(vectors_to_upsert) >= 100:
             active_index.upsert(vectors=vectors_to_upsert, namespace=chat_id)
             vectors_to_upsert = []
@@ -153,7 +148,7 @@ def index_document(chat_id: str, doc_id: str, filename: str, file_content: bytes
     logger.info("Successfully indexed %s in Pinecone.", filename)
 
 def query_rag_context(chat_id: str, query: str, top_k: int = 3) -> str:
-    """Queries Pinecone for relevant chunks and constructs context string."""
+    """Queries Pinecone namespace for matching context chunks."""
     try:
         active_index = init_pinecone()
     except Exception as e:
@@ -191,7 +186,7 @@ def query_rag_context(chat_id: str, query: str, top_k: int = 3) -> str:
         return ""
 
 def delete_document_vectors(chat_id: str, doc_id: str):
-    """Deletes all vector chunks associated with a document ID from the chat's namespace."""
+    """Deletes all vector chunks associated with doc_id from chat namespace."""
     try:
         active_index = init_pinecone()
         logger.info("Deleting vectors for Doc %s in namespace %s", doc_id, chat_id)
@@ -200,7 +195,7 @@ def delete_document_vectors(chat_id: str, doc_id: str):
         logger.error("Error deleting Pinecone vectors for doc %s: %s", doc_id, str(e))
 
 def delete_chat_namespace(chat_id: str):
-    """Deletes the entire Pinecone namespace for a chat session."""
+    """Deletes entire Pinecone namespace for a chat session."""
     try:
         active_index = init_pinecone()
         logger.info("Deleting entire namespace: %s", chat_id)

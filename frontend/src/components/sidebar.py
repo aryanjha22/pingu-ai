@@ -4,10 +4,10 @@ from src.api import create_backend_chat
 from backend.logger import app_logger as logger
 
 def render_sidebar():
-    """Renders the sidebar component containing user details, sign-out, and active chats."""
+    """Renders the sidebar component containing user details, sign-out, and active chats list."""
     user_token = st.session_state.user.get("token")
     
-    # 1. User Profile Widget
+    # User Profile Widget
     photo_url = st.session_state.user["photoURL"]
     disp_name = st.session_state.user["displayName"]
     disp_email = st.session_state.user["email"]
@@ -26,7 +26,7 @@ def render_sidebar():
     </div>
     """, unsafe_allow_html=True)
     
-    # Sign Out Button
+    # Sign Out
     st.markdown('<div class="signout-btn-container">', unsafe_allow_html=True)
     if st.button("🔓 Sign Out", use_container_width=True, key="sign_out_btn"):
         logger.info("User signed out.")
@@ -40,7 +40,7 @@ def render_sidebar():
         
     st.markdown('<div class="glass-card-title">🐧 Chats</div>', unsafe_allow_html=True)
     
-    # 2. New Chat Button
+    # New Chat Creation
     st.markdown('<div class="new-chat-container">', unsafe_allow_html=True)
     active_chat = st.session_state.chats.get(st.session_state.active_chat_id, {})
     has_empty_chat = len(active_chat.get("messages", [])) == 0
@@ -72,10 +72,9 @@ def render_sidebar():
     st.markdown('</div>', unsafe_allow_html=True)
     st.write("")
     
-    # 3. Active Chats List
+    # Active Chats List sorted by updatedAt descending
     st.markdown('<div class="chats-list-scrollable">', unsafe_allow_html=True)
     
-    # Sort active chats by updatedAt descending
     sorted_chats = sorted(
         st.session_state.chats.items(),
         key=lambda x: x[1].get("updatedAt", 0),

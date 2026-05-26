@@ -1,22 +1,28 @@
 import streamlit as st
 from src.auth import auth_configured, get_google_auth_url
 from backend.logger import app_logger as logger
+from backend.config import IS_PROD
 
 def render_login_view():
     """Renders the glassmorphic login screen for Pingu AI."""
 
     # Guest authentication callback trigger
     if st.query_params.get("guest") == "1":
-        logger.info("User selected Guest Demo Mode. Logging in with mock token.")
-        st.query_params.clear()
-        st.session_state.user = {
-            "uid": "demo_user",
-            "email": "demo@pingu.ai",
-            "displayName": "Demo Pingu",
-            "photoURL": "https://api.dicebear.com/7.x/bottts/svg?seed=Pingu",
-            "token": "demo_token"
-        }
-        st.rerun()
+        if IS_PROD:
+            logger.warning("Attempted to log in as guest in production environment. Access denied.")
+            st.query_params.clear()
+            st.error("Guest login is not available in production.")
+        else:
+            logger.info("User selected Guest Demo Mode. Logging in with mock token.")
+            st.query_params.clear()
+            st.session_state.user = {
+                "uid": "demo_user",
+                "email": "demo@pingu.ai",
+                "displayName": "Demo Pingu",
+                "photoURL": "https://api.dicebear.com/7.x/bottts/svg?seed=Pingu",
+                "token": "demo_token"
+            }
+            st.rerun()
 
     st.markdown('<div class="login-marker"></div>', unsafe_allow_html=True)
 
@@ -32,7 +38,7 @@ def render_login_view():
         """, unsafe_allow_html=True)
 
         # Developer warning banner
-        if not auth_configured:
+        if not auth_configured and not IS_PROD:
             st.markdown("""
             <div class="dev-mode-banner">
                 <div class="dev-mode-banner-header">
@@ -68,20 +74,28 @@ def render_login_view():
                 </button>
             </div>"""
 
-        guest_btn = """
-        <div class="login-btn-stack">
-            <a href="?guest=1" target="_self" class="guest-login-btn">
-                👤 &nbsp;Continue as Guest
-            </a>
-        </div>"""
+        if IS_PROD:
+            # In production, show only Google login button
+            st.markdown(f"""
+            {google_btn}
+            """, unsafe_allow_html=True)
+        else:
+            # In development/non-prod, show Google login button, divider, and guest login button
+            guest_btn = """
+            <div class="login-btn-stack">
+                <a href="?guest=1" target="_self" class="guest-login-btn">
+                    👤 &nbsp;Continue as Guest
+                </a>
+            </div>"""
 
-        st.markdown(f"""
-        {google_btn}
-        <div class="login-divider"><span>or</span></div>
-        {guest_btn}
-        """, unsafe_allow_html=True)
+            st.markdown(f"""
+            {google_btn}
+            <div class="login-divider"><span>or</span></div>
+            {guest_btn}
+            """, unsafe_allow_html=True)
 
     st.markdown(
         '<div class="login-card-footer">Crafted with ❤️ by the Pingu AI Team</div>',
         unsafe_allow_html=True
     )
+

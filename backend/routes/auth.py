@@ -20,6 +20,12 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Secur
     if not credentials:
         # Check if auth is configured
         if not config.firebase_configured:
+            if config.IS_PROD:
+                logger.error("Attempted anonymous access in production mode.")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Anonymous developer bypass is disabled in production mode."
+                )
             # Fallback user in unconfigured dev mode
             logger.info("Accessing endpoint in Local Developer Mode without credentials. Granting mock demo user.")
             return {
@@ -41,6 +47,11 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Secur
         logger.error("Security Authentication Failed: %s", str(e))
         # If in unconfigured developer mode, we can allow simple bypass
         if not config.firebase_configured:
+            if config.IS_PROD:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication failed. Bypass is disabled in production mode."
+                )
             logger.info("Local mode token validation failure. Returning demo user.")
             return {
                 "uid": "demo_user",

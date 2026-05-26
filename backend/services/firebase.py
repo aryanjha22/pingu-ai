@@ -9,8 +9,12 @@ firebase_app = None
 # Initialize Firebase Admin SDK
 if config.firebase_configured:
     try:
-        logger.info("Initializing Firebase Admin SDK using Service Account JSON: %s", config.FIREBASE_SERVICE_ACCOUNT_JSON)
-        cred = credentials.Certificate(config.FIREBASE_SERVICE_ACCOUNT_JSON)
+        if config.firebase_sa_dict:
+            logger.info("Initializing Firebase Admin SDK using Service Account raw content dictionary.")
+            cred = credentials.Certificate(config.firebase_sa_dict)
+        else:
+            logger.info("Initializing Firebase Admin SDK using Service Account JSON: %s", config.FIREBASE_SERVICE_ACCOUNT_JSON)
+            cred = credentials.Certificate(config.FIREBASE_SERVICE_ACCOUNT_JSON)
         firebase_app = firebase_admin.initialize_app(cred)
         db = firestore.client()
         logger.info("Firebase Admin SDK initialized successfully with Firestore database connection.")
@@ -18,17 +22,20 @@ if config.firebase_configured:
         logger.error("Failed to initialize Firebase Admin with credentials: %s. Falling back to local offline mode.", str(e), exc_info=True)
         db = None
 else:
-    logger.info("No Firebase Service Account JSON provided. Pingu AI Backend is running in Local/Offline Developer Mode.")
+    logger.info("No Firebase Service Account JSON or content provided. Pingu AI Backend is running in Local/Offline Developer Mode.")
     db = None
 
 
 def verify_firebase_token(token: str) -> dict:
     """
     Verifies a Firebase ID token.
-    If the token is 'demo_token', immediately returns the mock guest profile.
+    If the token is 'demo_token', immediately returns the mock guest profile (unless in production).
     If Firebase is configured, it performs real token verification.
     """
     if token == "demo_token":
+        if config.IS_PROD:
+            logger.warning("Bypass token 'demo_token' rejected in production environment.")
+            raise ValueError("Authentication guest bypass is disabled in production environment.")
         logger.info("Bypassing Firebase Auth for guest demo_token.")
         return {
             "uid": "demo_user",

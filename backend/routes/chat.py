@@ -21,7 +21,7 @@ class ChatCreateRequest(BaseModel):
     name: str
     persona: str = "default"
     temperature: float = 0.7
-    model: str = "gemini-2.5-flash-lite"
+    model: Optional[str] = None
 
 class ChatUpdateRequest(BaseModel):
     name: Optional[str] = None
@@ -105,7 +105,26 @@ async def upload_chat_document(
 ):
     """Upload and index a document for RAG in Pinecone."""
     try:
+        # 1. Enforce Document Count Limit per chat (Max 5 documents)
+        chat = chat_store.get_chat(chat_id)
+        if chat:
+            existing_docs = chat.get("documents", [])
+            if len(existing_docs) >= 5:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Maximum limit of 5 documents reached for this chat. Please delete existing documents to upload new ones."
+                )
+
         content = await file.read()
+        
+        # 2. Enforce File Size Limit (Max 5MB)
+        MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File is too large. Maximum supported document size is 5MB."
+            )
+
         import uuid
         doc_id = f"doc_{uuid.uuid4().hex}"
         
@@ -122,6 +141,9 @@ async def upload_chat_document(
             )
             
         return {"status": "ok", "doc_id": doc_id, "filename": file.filename}
+    except HTTPException:
+        # Re-raise HTTPExceptions so they aren't caught by the general catch-all below
+        raise
     except Exception as e:
         logger.error("Error uploading document: %s", str(e), exc_info=True)
         raise HTTPException(
@@ -201,14 +223,18 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: Optional[str] = Q
             messages = data.get("messages", [])
             persona = data.get("persona", "default")
             temperature = data.get("temperature", 0.7)
-            model = data.get("model", "gemini-2.5-flash-lite")
+            model = data.get("model") or config.DEFAULT_MODEL
 
             # Convert JSON structure to backend lists
             messages_dict = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
 
+            current_summary = ""
             # Save the user's latest incoming message to persistence if chat_id is present
             if chat_id:
                 chat_store.update_chat_messages(chat_id, messages_dict)
+                # Apply context trimming & background summarization
+                from backend.services.memory import manage_chat_memory
+                messages_dict, current_summary = manage_chat_memory(chat_id, messages_dict)
 
             # RAG Context retrieval and injection
             augmented_messages = list(messages_dict)
@@ -242,7 +268,8 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: Optional[str] = Q
                     messages=augmented_messages,
                     persona=persona,
                     temperature=temperature,
-                    model=model
+                    model=model,
+                    summary=current_summary
                 )
 
                 full_response = ""

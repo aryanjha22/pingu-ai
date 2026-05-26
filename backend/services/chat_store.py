@@ -52,6 +52,29 @@ class ChatStore:
                 logger.error("In-memory query error for user %s: %s", uid, str(e), exc_info=True)
                 return []
 
+    def get_chat(self, chat_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves a specific chat session by its ID.
+        """
+        logger.info("Retrieving chat session details for chat ID: %s", chat_id)
+        if self.db:
+            try:
+                doc = self.db.collection("chats").document(chat_id).get()
+                if doc.exists:
+                    data = doc.to_dict()
+                    data["chat_id"] = doc.id
+                    return data
+                return None
+            except Exception as e:
+                logger.error("Firestore get chat error for ID %s: %s", chat_id, str(e), exc_info=True)
+                return None
+        else:
+            if chat_id in self.memory_store:
+                data = dict(self.memory_store[chat_id])
+                data["chat_id"] = chat_id
+                return data
+            return None
+
     def create_chat(
         self,
         uid: str,
@@ -59,13 +82,14 @@ class ChatStore:
         name: str,
         persona: str = "default",
         temperature: float = 0.7,
-        model: str = "gemini-2.5-flash-lite"
+        model: Optional[str] = None
     ) -> bool:
         """
         Creates a new empty chat session for a user.
         """
         now = time.time()
-        logger.info("Creating new chat session '%s' (ID: %s) for UID: %s", name, chat_id, uid)
+        active_model = model or config.DEFAULT_MODEL
+        logger.info("Creating new chat session '%s' (ID: %s) for UID: %s using model %s", name, chat_id, uid, active_model)
         if self.db:
             try:
                 # Firestore
@@ -74,8 +98,9 @@ class ChatStore:
                     "name": name,
                     "persona": persona,
                     "temperature": temperature,
-                    "model": model,
+                    "model": active_model,
                     "messages": [],
+                    "summary": "",
                     "createdAt": now,
                     "updatedAt": now
                 })
@@ -91,8 +116,9 @@ class ChatStore:
                     "name": name,
                     "persona": persona,
                     "temperature": temperature,
-                    "model": model,
+                    "model": active_model,
                     "messages": [],
+                    "summary": "",
                     "createdAt": now,
                     "updatedAt": now
                 }
@@ -137,7 +163,8 @@ class ChatStore:
         name: Optional[str] = None,
         persona: Optional[str] = None,
         temperature: Optional[float] = None,
-        model: Optional[str] = None
+        model: Optional[str] = None,
+        summary: Optional[str] = None
     ) -> bool:
         """
         Modifies general settings metadata for an existing chat session.
@@ -154,7 +181,9 @@ class ChatStore:
             updates["temperature"] = temperature
         if model is not None:
             updates["model"] = model
-
+        if summary is not None:
+            updates["summary"] = summary
+ 
         if self.db:
             try:
                 # Firestore
@@ -176,6 +205,8 @@ class ChatStore:
                         self.memory_store[chat_id]["temperature"] = temperature
                     if model is not None:
                         self.memory_store[chat_id]["model"] = model
+                    if summary is not None:
+                        self.memory_store[chat_id]["summary"] = summary
                     return True
                 logger.warning("Attempted to update settings for non-existent in-memory chat: %s", chat_id)
                 return False

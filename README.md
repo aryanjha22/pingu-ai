@@ -24,6 +24,11 @@ graph TD
 * **Session-Isolated RAG:** Document indexing (PDF, TXT, MD) using `gemini-embedding-001` (768 dimensions) stored under chat-specific Pinecone namespaces.
 * **Hybrid Storage Layer:** Saves chat history and document metadata directly to Firestore, with a local in-memory fallback for offline development.
 * **User Authentication:** Firebase ID token validation with a local developer bypass (`demo_token`).
+* **Production Abuse Safeguards:** 
+  * **IP-based Rate Limiting:** Built-in in-memory rate-limiter middleware (max 60 requests per minute per IP) to prevent bot spamming.
+  * **Document Constraints:** Strict 5MB file size limit and a maximum of 5 active documents per chat session to protect free-tier Pinecone storage.
+  * **Dynamic CORS:** Restricts requests only to specified frontend domains.
+  * **Zero-File Deployments:** Support for injecting Firebase credentials directly as a raw JSON string content environment variable.
 
 ---
 
@@ -66,7 +71,7 @@ pingu-ai/
 
 ## Environmental Setup
 
-Create a `.env` file in the `backend/` directory. The frontend will automatically detect these values if loaded from the root or backend directories.
+Create a `.env` file in the `backend/` directory (or specify them directly in your cloud provider's dashboard). The frontend will automatically detect backend variables if loaded from the root or backend directories.
 
 ```env
 # Gemini API Key
@@ -78,11 +83,17 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 FIREBASE_WEB_API_KEY="your-firebase-web-api-key"
 
 # Firebase Admin SDK Configuration (Backend Persistence)
+# Support either a filepath or a raw JSON string content representation:
 FIREBASE_SERVICE_ACCOUNT_JSON="pingu-52f3f-firebase-adminsdk-g8i1m-6f16c1d817.json"
+# FIREBASE_SERVICE_ACCOUNT_JSON_CONTENT='{"type": "service_account", ...}'
 
 # Pinecone Configuration (RAG)
 PINECONE_API_KEY="your-pinecone-api-key"
 PINECONE_INDEX_NAME="pingu-rag"
+
+# Deployed Environment Settings
+ENV="development" # Set to "production" in cloud hosting to enforce strict auth
+ALLOWED_ORIGINS="*" # Set to your deployed frontend domain in production (comma-separated list)
 ```
 
 ---
@@ -127,8 +138,18 @@ The interface will be hosted locally at `http://localhost:8501`.
 
 ---
 
-## Local Developer Bypass (Offline Sandbox)
+## Production Security Settings vs Local Sandbox
 
-To simplify local development, the codebase features graceful degradation for external dependencies:
-* **No Firebase Credentials:** If `FIREBASE_SERVICE_ACCOUNT_JSON` is missing or invalid, the backend defaults to **Local Mode**, persisting chat sessions in-memory. Logging in on the frontend with the "Guest Login" button uses a mock profile (`demo_user`) backed by `demo_token` validation.
-* **No Pinecone Credentials:** If `PINECONE_API_KEY` is not configured, vector database initializations are bypassed. Normal LLM chat remains active, but document upload and RAG indexing will be disabled.
+To simplify local development and safeguard cloud operations in production, the codebase runs in two modes:
+
+### Local Developer Bypass (Offline Sandbox)
+If `ENV` is not set to `production`:
+* **No Firebase Credentials:** Gracefully degrades to **Local Mode**, persisting chat sessions in-memory. Logging in on the frontend with the "Guest Login" button uses a mock profile (`demo_user`) backed by `demo_token` validation.
+* **No Pinecone Credentials:** Bypasses vector database initializations. Normal chat remains active, but document upload and RAG indexing will be disabled.
+
+### Strict Production Mode (Cloud Showcase)
+If `ENV` is set to `production` or `PROD` is set to `true`:
+* **Bypass Disabled:** The `demo_token` guest bypass is **completely disabled**. Unauthenticated or anonymous connection requests are strictly rejected.
+* **Rate Limits Active:** Rejects clients that make more than 60 backend API requests per minute.
+* **Upload Limits Active:** Document size is strictly capped at 5MB, and a maximum of 5 files can be uploaded per chat session in Pinecone to prevent memory exhaustion.
+* **Origin Locking:** CORS headers restrict API access only to the domains defined under `ALLOWED_ORIGINS`.

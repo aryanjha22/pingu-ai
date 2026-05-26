@@ -7,7 +7,7 @@ The backend is a FastAPI application built to handle chat persistence, real-time
 ## Technical Components
 
 The backend architecture consists of:
-1. **Web Layer (`main.py` & `routes/`):** FastAPI application wrapper containing CORS configurations and router registrations.
+1. **Web Layer (`main.py` & `routes/`):** FastAPI application wrapper containing CORS configurations, routers, and built-in rate limiters.
    * `auth.py`: Provides user authentication validation using Firebase token verification.
    * `chat.py`: Exposes REST endpoints for session metadata CRUD operations and hosts the bidirectional WebSocket route for live chat generation.
 2. **Storage Layer (`services/chat_store.py`):** Instantiates a `ChatStore` provider. It saves chat history, settings, and uploaded document references. If Firebase configurations are absent, it shifts to an in-memory dictionary-backed fallback.
@@ -17,6 +17,31 @@ The backend architecture consists of:
    * **Chunking:** Splits document text into blocks of 800 characters with an 80-character overlap.
    * **Embeddings:** Generates 768-dimensional vectors using `gemini-embedding-001`.
    * **Vector Database:** Stores and queries vector chunks inside Pinecone using the `chat_id` as the namespace.
+5. **Memory Management (`services/memory.py`):** Monitors conversation context sizes dynamically.
+   * **Trimming:** When active message count exceeds `CHAT_SUMMARIZE_THRESHOLD` (12), prunes the active history down to `CHAT_WINDOW_SIZE` (10).
+   * **Summarization:** Condenses older pruned messages into a rolling `summary` saved in the database. This summary is injected dynamically into succeeding system instructions, maintaining long-term thematic consistency.
+
+---
+
+## 🛡️ Production Safeguards
+
+To prevent abuse, resource exhaustion, and credential leaks on free tiers, the backend implements the following security measures:
+
+### 1. In-Memory IP-Based Rate Limiting
+A custom lightweight middleware intercepts all incoming `/api` and `/api/ws` requests. It restricts each unique client IP to a maximum of **60 requests per minute**. Excess requests return a `429 Too Many Requests` HTTP error.
+
+### 2. Document & Vector constraints
+* **File Size Cap:** Restricts uploads on `POST /api/chats/{chat_id}/documents` to a maximum of **5MB** per file.
+* **Document Count Cap:** Restricts each chat session to a maximum of **5 active documents** indexed in Pinecone.
+
+### 3. Strict Production Mode Checks
+If the environment variable `ENV=production` or `PROD=true` is set:
+* Anonymous connection bypasses (including `demo_token` guest login) are completely blocked.
+* All REST and WebSocket routes enforce valid Firebase ID tokens.
+* Dynamic CORS configurations apply to only the comma-separated domains specified under the `ALLOWED_ORIGINS` environment variable.
+
+### 4. Zero-File Secret Initialization
+Supports initializing Firebase Admin using a raw string representation of the credentials via `FIREBASE_SERVICE_ACCOUNT_JSON_CONTENT`. This avoids writing secret key JSON files to read-only container volumes.
 
 ---
 
@@ -33,14 +58,14 @@ All REST APIs require a bearer JWT header (`Authorization: Bearer <token>`) exce
 | **POST** | `/api/chats` | Registers a new chat session with specified metadata configurations. |
 | **PUT** | `/api/chats/{chat_id}` | Updates chat parameters (such as name, persona, temperature, model) or saves message lists. |
 | **DELETE** | `/api/chats/{chat_id}`| Deletes the session thread and flushes its corresponding namespace in Pinecone. |
-| **POST** | `/api/chats/{chat_id}/documents` | Parses, chunks, embeds, and indexes a file into Pinecone for RAG. |
+| **POST** | `/api/chats/{chat_id}/documents` | Parses, chunks, embeds, and indexes a file into Pinecone for RAG. **(Size limited to 5MB, Max 5 per chat)** |
 | **DELETE** | `/api/chats/{chat_id}/documents/{doc_id}` | Removes document vectors from Pinecone and deletes its db metadata. |
 
 ### WebSocket Protocol (`/api/ws/chat`)
 
 Processes streaming conversation flows.
 
-* **Authentication:** Expects the Firebase JWT token as a `token` query parameter. If Firebase is not configured locally, passing no token yields automated guest profile access (`demo_user`).
+* **Authentication:** Expects the Firebase JWT token as a `token` query parameter. If Firebase is not configured locally, passing no token yields automated guest profile access (`demo_user`) **unless running in Production Mode**.
 * **Client Request Frame (JSON):**
   ```json
   {
@@ -50,7 +75,7 @@ Processes streaming conversation flows.
     ],
     "persona": "default",
     "temperature": 0.7,
-    "model": "gemini-2.5-flash-lite"
+    "model": "gemma-4-26b-a4b-it"
   }
   ```
 * **Server Response Protocol (JSON):**
@@ -107,7 +132,7 @@ Test backend server availability:
 ```bash
 curl http://localhost:8000/health
 ```
-Verify localized database operations without setting up Firebase (guest credentials bypass):
+Verify localized database operations without setting up Firebase (guest credentials bypass in development):
 ```bash
 curl -H "Authorization: Bearer demo_token" http://localhost:8000/api/chats
 ```

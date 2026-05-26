@@ -1,5 +1,6 @@
 import os
 import time
+from typing import Optional
 from google import genai
 from google.genai import types
 from backend import config
@@ -12,7 +13,8 @@ def stream_chat_response(
     messages: list,
     persona: str = "default",
     temperature: float = 0.7,
-    model: str = "gemini-2.5-flash-lite"
+    model: Optional[str] = None,
+    summary: str = ""
 ):
     """
     Streams responses from the Gemini API using system instructions and configuration.
@@ -22,11 +24,13 @@ def stream_chat_response(
         persona (str): Key of the system prompt to use
         temperature (float): Controls creativity (0.0 to 2.0)
         model (str): Gemini model identifier
+        summary (str): Optional running summary of older messages
 
     Yields:
         str: Response text chunks
     """
-    logger.info("Initializing chat stream. Model: %s | Temp: %s | Persona: %s", model, temperature, persona)
+    active_model = model or config.DEFAULT_MODEL
+    logger.info("Initializing chat stream. Model: %s | Temp: %s | Persona: %s", active_model, temperature, persona)
     
     # Convert frontend message structure to google-genai format
     # Roles in Streamlit are 'user' and 'assistant', but Gemini expects 'user' and 'model'
@@ -48,6 +52,8 @@ def stream_chat_response(
 
     # Retrieve the system instruction securely from configuration prompts mapping
     system_instruction = config.SYSTEM_PROMPTS.get(persona, config.SYSTEM_PROMPTS["default"])
+    if summary:
+        system_instruction += f"\n\n[SUMMARY OF OLDER MESSAGES IN THIS CHAT]\n{summary}\n[END OF SUMMARY]"
 
     config_params = types.GenerateContentConfig(
         temperature=temperature,
@@ -61,7 +67,7 @@ def stream_chat_response(
 
     try:
         response = client.models.generate_content_stream(
-            model=model,
+            model=active_model,
             contents=contents,
             config=config_params
         )

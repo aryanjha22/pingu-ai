@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -15,6 +16,13 @@ elif root_env.exists():
 else:
     load_dotenv()
 
+# Environment type
+IS_PROD = os.getenv("ENV", "development").lower() == "production" or os.getenv("PROD", "false").lower() == "true"
+
+# CORS configuration
+CORS_ORIGINS_RAW = os.getenv("ALLOWED_ORIGINS", "*")
+ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_RAW.split(",")] if CORS_ORIGINS_RAW else ["*"]
+
 # API Keys & Credentials
 GEMINI_API_KEY = os.getenv("Gemini_API_Key") or os.getenv("GEMINI_API_KEY")
 if GEMINI_API_KEY:
@@ -26,9 +34,12 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "pingu-rag")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY")
-FIREBASE_SERVICE_ACCOUNT_JSON = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
 
-# Dynamically resolve relative path for the Firebase Service Account JSON
+# Firebase Service Account (JSON file path or raw JSON string content)
+FIREBASE_SERVICE_ACCOUNT_JSON = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+FIREBASE_SERVICE_ACCOUNT_JSON_CONTENT = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON_CONTENT")
+
+# Dynamically resolve relative path for the Firebase Service Account JSON if provided
 if FIREBASE_SERVICE_ACCOUNT_JSON:
     sa_path = Path(FIREBASE_SERVICE_ACCOUNT_JSON)
     if not sa_path.is_absolute():
@@ -41,12 +52,27 @@ if FIREBASE_SERVICE_ACCOUNT_JSON:
                 FIREBASE_SERVICE_ACCOUNT_JSON = str(p.resolve())
                 break
 
+# Parse Service Account content if provided as a raw string
+firebase_sa_dict = None
+if FIREBASE_SERVICE_ACCOUNT_JSON_CONTENT:
+    try:
+        firebase_sa_dict = json.loads(FIREBASE_SERVICE_ACCOUNT_JSON_CONTENT)
+    except Exception:
+        pass
+
 # Configurations state
 firebase_configured = False
-if FIREBASE_SERVICE_ACCOUNT_JSON and os.path.exists(FIREBASE_SERVICE_ACCOUNT_JSON):
+if firebase_sa_dict or (FIREBASE_SERVICE_ACCOUNT_JSON and os.path.exists(FIREBASE_SERVICE_ACCOUNT_JSON)):
     firebase_configured = True
 
 auth_configured = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and FIREBASE_WEB_API_KEY)
+
+# Memory configuration for context trimming & summarization
+CHAT_WINDOW_SIZE = 10
+CHAT_SUMMARIZE_THRESHOLD = 20
+
+# Default LLM Model
+DEFAULT_MODEL = "gemma-4-26b-a4b-it"
 
 # LLM Persona and prompts configuration
 SYSTEM_PROMPTS = {
@@ -60,3 +86,4 @@ SYSTEM_PROMPTS = {
         "Write robust, modern, clean, and highly documented code. Explain structural choices clearly and concisely."
     )
 }
+

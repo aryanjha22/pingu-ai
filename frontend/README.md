@@ -30,19 +30,25 @@ frontend/
         └── sidebar.py      # Thread listing panel.
 ```
 
-### Core Architecture Notes
+---
 
-#### 1. Page Lifecycle & State Sync (`src/state.py`)
-Streamlit re-runs the entire entrypoint file `app.py` on every user interaction. To prevent session reset or state losses:
-* `init_session_state()` sets up session placeholders (e.g. `user`, `chats`, `active_chat_id`, `messages`) inside Streamlit's cache.
-* `sync_user_chats()` syncs current database thread modifications in the background by calling REST routes.
+## 🛠️ Deployed Compatibility Features
 
-#### 2. WebSocket Streaming (`src/api.py`)
-The application maintains persistent connection logic inside the frontend client:
-* `stream_chat_from_api(...)` initiates the `websocket.create_connection` handshake with the FastAPI backend. It sends configuration values and historical logs, and iterates on server frames to stream token chunks to Streamlit's `st.write_stream` receiver.
+The frontend is built with production showcase environments in mind:
 
-#### 3. Styling Injection (`style.css`)
-Loaded dynamically in `app.py` via `st.markdown("<style>...</style>", unsafe_allow_html=True)`. It overrides standard Streamlit elements to implement slate backgrounds, custom text margins, and custom chat bubbles.
+### 1. Host Agnostic Configuration
+Resolves connection endpoints dynamically by reading the `PINGU_BACKEND_URL` environment variable. In your hosting dashboard, just configure:
+```env
+PINGU_BACKEND_URL="https://pingu-backend.onrender.com"
+```
+The client will automatically route all REST and WebSocket connections (`https://` matches `wss://` and `http://` matches `ws://`) seamlessly.
+
+### 2. Standardized Error Interception
+Our document upload limits (max **5MB** and **5 documents** per chat) are safely intercepted. When the server rejects a file, the frontend captures the payload and automatically displays a clean error banner in Streamlit:
+```python
+if "error" in res:
+    st.error(f"Upload failed: {res['error']}")
+```
 
 ---
 

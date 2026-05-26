@@ -100,12 +100,16 @@ def handle_oauth_callback():
         q_params = st.query_params
         if "code" in q_params:
             auth_code = q_params["code"]
+            # Clear the query params immediately so reloads/reruns don't retry the expired code
+            st.query_params.clear()
             with st.spinner("Exchanging secure authentication credentials..."):
                 user_profile = exchange_code_for_firebase_user(auth_code)
                 if user_profile:
                     st.session_state.user = user_profile
-                    st.query_params.clear()
                     st.rerun()
+                else:
+                    st.error("Authentication failed or code expired. Please click Google login again.")
+
 
 def get_google_auth_url() -> str:
     """Generates the Google OAuth redirection URL."""

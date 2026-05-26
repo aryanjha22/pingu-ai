@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query, HTTPException, status
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query, HTTPException, status, UploadFile, File
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from backend import config
 from backend.services.firebase import verify_firebase_token
 from backend.services.chat_store import chat_store
 from backend.services.llm import stream_chat_response
+from backend.services.rag import index_document, delete_document_vectors, query_rag_context
 from backend.routes.auth import get_current_user
 from backend.logger import backend_logger as logger
 
@@ -96,6 +97,62 @@ def delete_chat(chat_id: str, user: dict = Depends(get_current_user)):
     return {"status": "ok"}
 
 
+@router.post("/chats/{chat_id}/documents")
+async def upload_chat_document(
+    chat_id: str,
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user)
+):
+    """Upload and index a document for RAG in Pinecone."""
+    try:
+        content = await file.read()
+        import uuid
+        doc_id = f"doc_{uuid.uuid4().hex}"
+        
+        # Parse, chunk, and index in Pinecone
+        index_document(chat_id=chat_id, doc_id=doc_id, filename=file.filename, file_content=content)
+        
+        # Save in database
+        success = chat_store.add_chat_document(chat_id=chat_id, doc_id=doc_id, filename=file.filename)
+        if not success:
+            delete_document_vectors(chat_id=chat_id, doc_id=doc_id)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to register document in database."
+            )
+            
+        return {"status": "ok", "doc_id": doc_id, "filename": file.filename}
+    except Exception as e:
+        logger.error("Error uploading document: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process and index document: {str(e)}"
+        )
+
+@router.delete("/chats/{chat_id}/documents/{doc_id}")
+def delete_chat_document(
+    chat_id: str,
+    doc_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Remove a document's vector indices and database metadata."""
+    try:
+        delete_document_vectors(chat_id=chat_id, doc_id=doc_id)
+        success = chat_store.remove_chat_document(chat_id=chat_id, doc_id=doc_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to remove document reference from database."
+            )
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error("Error deleting document: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
 # WEBSOCKET STREAMING ENDPOINT
 
 @router.websocket("/ws/chat")
@@ -153,10 +210,36 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: Optional[str] = Q
             if chat_id:
                 chat_store.update_chat_messages(chat_id, messages_dict)
 
+            # RAG Context retrieval and injection
+            augmented_messages = list(messages_dict)
+            if chat_id and messages_dict:
+                # Find last user message
+                last_user_idx = -1
+                for idx in range(len(messages_dict) - 1, -1, -1):
+                    if messages_dict[idx]["role"] == "user":
+                        last_user_idx = idx
+                        break
+                
+                if last_user_idx != -1:
+                    user_query = messages_dict[last_user_idx]["content"]
+                    rag_context = query_rag_context(chat_id, user_query)
+                    if rag_context:
+                        augmented_query = (
+                            f"[CONTEXT FROM UPLOADED DOCUMENTS]\n"
+                            f"{rag_context}\n"
+                            f"[END OF CONTEXT]\n\n"
+                            f"Use the above context to answer the user query accurately. If the answer is not in the context, use your best knowledge but prioritize the context.\n\n"
+                            f"User: {user_query}"
+                        )
+                        augmented_messages[last_user_idx] = {
+                            "role": "user",
+                            "content": augmented_query
+                        }
+
             try:
                 # Trigger generation stream
                 generator = stream_chat_response(
-                    messages=messages_dict,
+                    messages=augmented_messages,
                     persona=persona,
                     temperature=temperature,
                     model=model

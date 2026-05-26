@@ -185,9 +185,17 @@ class ChatStore:
 
     def delete_chat(self, chat_id: str) -> bool:
         """
-        Deletes a chat session permanently.
+        Deletes a chat session permanently and cleans up Pinecone namespace.
         """
         logger.info("Permanently deleting chat session ID: %s", chat_id)
+        
+        # Proactively clean up Pinecone namespace if RAG service is active
+        try:
+            from backend.services.rag import delete_chat_namespace
+            delete_chat_namespace(chat_id)
+        except Exception as e:
+            logger.error("Failed to delete Pinecone namespace for chat %s: %s", chat_id, str(e))
+            
         if self.db:
             try:
                 # Firestore
@@ -207,6 +215,54 @@ class ChatStore:
             except Exception as e:
                 logger.error("In-memory delete failed for chat %s: %s", chat_id, str(e), exc_info=True)
                 return False
+
+    def add_chat_document(self, chat_id: str, doc_id: str, filename: str) -> bool:
+        """Adds a document reference to the chat session."""
+        now = time.time()
+        new_doc = {"doc_id": doc_id, "filename": filename, "uploadedAt": now}
+        
+        if self.db:
+            try:
+                doc_ref = self.db.collection("chats").document(chat_id)
+                chat_data = doc_ref.get().to_dict() or {}
+                documents = chat_data.get("documents", [])
+                documents.append(new_doc)
+                doc_ref.update({"documents": documents, "updatedAt": now})
+                return True
+            except Exception as e:
+                logger.error("Failed to add document in Firestore: %s", str(e))
+                return False
+        else:
+            if chat_id in self.memory_store:
+                documents = self.memory_store[chat_id].setdefault("documents", [])
+                documents.append(new_doc)
+                self.memory_store[chat_id]["updatedAt"] = now
+                return True
+            return False
+
+    def remove_chat_document(self, chat_id: str, doc_id: str) -> bool:
+        """Removes a document reference from the chat session."""
+        now = time.time()
+        if self.db:
+            try:
+                doc_ref = self.db.collection("chats").document(chat_id)
+                chat_data = doc_ref.get().to_dict() or {}
+                documents = chat_data.get("documents", [])
+                filtered = [doc for doc in documents if doc.get("doc_id") != doc_id]
+                doc_ref.update({"documents": filtered, "updatedAt": now})
+                return True
+            except Exception as e:
+                logger.error("Failed to remove document in Firestore: %s", str(e))
+                return False
+        else:
+            if chat_id in self.memory_store:
+                documents = self.memory_store[chat_id].get("documents", [])
+                filtered = [doc for doc in documents if doc.get("doc_id") != doc_id]
+                self.memory_store[chat_id]["documents"] = filtered
+                self.memory_store[chat_id]["updatedAt"] = now
+                return True
+            return False
+
 
 # Export instantiated storage client
 chat_store = ChatStore()

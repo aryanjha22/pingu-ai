@@ -43,6 +43,7 @@ def sync_user_chats():
                     "persona": chat.get("persona", "default"),
                     "temperature": chat.get("temperature", 0.7),
                     "model": chat.get("model", "gemini-2.5-flash-lite"),
+                    "documents": chat.get("documents", []),
                     "updatedAt": chat.get("updatedAt", chat.get("createdAt", time.time())),
                     "createdAt": chat.get("createdAt", time.time())
                 }

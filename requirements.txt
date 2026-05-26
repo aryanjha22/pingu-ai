@@ -50,11 +50,14 @@ markdown-it-py==4.2.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
 msgpack==1.1.2
+msgspec==0.21.1
 narwhals==2.21.2
 numpy==2.4.5
+orjson==3.11.9
 packaging==26.2
 pandas==3.0.3
 pillow==12.2.0
+pinecone==9.0.1
 plotly==6.7.0
 pluggy==1.6.0
 proto-plus==1.28.0

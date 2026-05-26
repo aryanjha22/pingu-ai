@@ -1,6 +1,6 @@
 import time
 import streamlit as st
-from src.api import update_backend_chat, delete_backend_chat, create_backend_chat
+from src.api import update_backend_chat, delete_backend_chat, create_backend_chat, upload_chat_document_api, delete_chat_document_api
 from backend.logger import app_logger as logger
 
 def render_settings():
@@ -75,6 +75,63 @@ def render_settings():
         active_chat["temperature"] = temperature
         active_chat["persona"] = persona
         active_chat["updatedAt"] = time.time()
+
+    # 4. Knowledge Base (RAG Documents)
+    st.markdown('<hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 1.5rem 0;" />', unsafe_allow_html=True)
+    st.markdown('<div class="glass-card-title">📚 Knowledge Base</div>', unsafe_allow_html=True)
+    
+    uploaded_file = st.file_uploader(
+        "Attach Document (PDF, TXT, MD)",
+        type=["pdf", "txt", "md"],
+        key=f"file_uploader_{active_chat_id}"
+    )
+    
+    if uploaded_file is not None:
+        uploaded_key = f"uploaded_{active_chat_id}_{uploaded_file.name}"
+        if uploaded_key not in st.session_state:
+            with st.spinner("Indexing document... 📚"):
+                file_bytes = uploaded_file.read()
+                res = upload_chat_document_api(
+                    chat_id=active_chat_id,
+                    file_bytes=file_bytes,
+                    filename=uploaded_file.name,
+                    token=user_token
+                )
+                if "error" in res:
+                    st.error(f"Upload failed: {res['error']}")
+                else:
+                    st.session_state[uploaded_key] = True
+                    st.success(f"Successfully indexed: {uploaded_file.name}")
+                    documents_list = active_chat.setdefault("documents", [])
+                    documents_list.append({
+                        "doc_id": res["doc_id"],
+                        "filename": res["filename"],
+                        "uploadedAt": time.time()
+                    })
+                    st.rerun()
+
+    # List Uploaded Documents
+    documents = active_chat.get("documents", [])
+    if documents:
+        st.markdown('<div style="margin-top: 0.5rem; font-weight: 500;">Uploaded Documents:</div>', unsafe_allow_html=True)
+        for doc in documents:
+            doc_id = doc["doc_id"]
+            filename = doc["filename"]
+            
+            col1, col2 = st.columns([0.85, 0.15])
+            with col1:
+                st.markdown(f'<div style="font-size: 0.85rem; padding: 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #cbd5e1;">📄 {filename}</div>', unsafe_allow_html=True)
+            with col2:
+                if st.button("🗑️", key=f"del_doc_{doc_id}_{active_chat_id}", help="Delete document"):
+                    with st.spinner("Deleting..."):
+                        success = delete_chat_document_api(chat_id=active_chat_id, doc_id=doc_id, token=user_token)
+                        if success:
+                            active_chat["documents"] = [d for d in documents if d["doc_id"] != doc_id]
+                            st.rerun()
+                        else:
+                            st.error("Failed to delete.")
+    else:
+        st.info("No documents uploaded for this chat.")
 
     st.write("")
     st.markdown('<div class="stats-container">', unsafe_allow_html=True)

@@ -63,6 +63,7 @@ def render_sidebar():
                 "persona": active_chat.get("persona", "default"),
                 "temperature": active_chat.get("temperature", 0.7),
                 "model": active_chat.get("model", "gemini-2.5-flash-lite"),
+                "documents": [],
                 "updatedAt": now,
                 "createdAt": now
             }

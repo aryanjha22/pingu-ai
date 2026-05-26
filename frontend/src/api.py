@@ -172,3 +172,34 @@ def stream_chat_from_api(
             logger.info("WebSocket connection closed cleanly.")
         except Exception:
             pass
+
+def upload_chat_document_api(chat_id: str, file_bytes: bytes, filename: str, token: str = None) -> dict:
+    """Uploads a document for RAG indexing to the backend."""
+    url = f"{get_backend_url()}/api/chats/{chat_id}/documents"
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    files = {"file": (filename, file_bytes, "application/octet-stream")}
+    logger.info("REST: Uploading document '%s' to chat ID: %s", filename, chat_id)
+    try:
+        response = requests.post(url, headers=headers, files=files, timeout=60)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            logger.error("Failed to upload document: HTTP %d - %s", response.status_code, response.text)
+            return {"error": response.text}
+    except Exception as e:
+        logger.error("REST: Connection error during upload_chat_document_api: %s", str(e))
+        return {"error": str(e)}
+
+def delete_chat_document_api(chat_id: str, doc_id: str, token: str = None) -> bool:
+    """Deletes an uploaded RAG document from the backend."""
+    url = f"{get_backend_url()}/api/chats/{chat_id}/documents/{doc_id}"
+    logger.info("REST: Deleting document ID: %s from chat ID: %s", doc_id, chat_id)
+    try:
+        response = requests.delete(url, headers=get_headers(token), timeout=10)
+        return response.status_code == 200
+    except Exception as e:
+        logger.error("REST: Connection error during delete_chat_document_api: %s", str(e))
+        return False
+
